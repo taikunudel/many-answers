@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { askOpenAI, askClaude, askGemini, DEFAULTS, withTimeout, nowMs, drawOpenAI } from './providers.js';
+import { loadProviderConfig } from './config.js';
 import OpenAI from 'openai';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,10 +15,21 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Retry helper: run task up to `attempts` times, each attempt capped by `perAttemptTimeoutMs`.
+function runWithRetries(label, taskFactory, attempts = 3, perAttemptTimeoutMs = 5000) {
+  async function attempt(n) {
+    const result = await withTimeout(taskFactory(), perAttemptTimeoutMs, label);
+    if (result.ok) return result;
+    if (n + 1 >= attempts) return result;
+    return attempt(n + 1);
+  }
+  return attempt(0);
+}
+
 // Streaming (real-time) generation for OpenAI via Server-Sent Events
 app.post('/api/stream', async (req, res) => {
   try {
-    const { prompt, system, model, temperature, maxTokens, maxCompletionTokens, histories } = req.body || {};
+    const { prompt, system, model, temperature, maxTokens, maxCompletionTokens, histories, modelId } = req.body || {};
     if (!prompt) return res.status(400).end('Missing prompt');
 
     res.setHeader('Content-Type', 'text/event-stream');
@@ -35,7 +47,10 @@ app.post('/api/stream', async (req, res) => {
     // Build messages with history
     const messages = [];
     if (system) messages.push({ role: 'system', content: system });
-    const history = histories?.openai || [];
+    // Use modelId-specific history for streaming
+    const history = (typeof modelId === 'string' && Array.isArray(histories?.[modelId])) 
+      ? histories[modelId] 
+      : (histories?.openai || []);
     if (Array.isArray(history)) {
       for (const m of history) {
         const role = m?.role === 'assistant' ? 'assistant' : m?.role === 'system' ? 'system' : 'user';
@@ -47,7 +62,8 @@ app.post('/api/stream', async (req, res) => {
 
     const startedAt = nowMs();
     const isGpt5 = /gpt-5/i.test(model || '') || /-2025-/.test(model || '');
-    const payload = { model: model || DEFAULTS.openaiModel, messages, temperature };
+    const payload = { model: model || DEFAULTS.openaiModel, messages };
+    if (!isGpt5 && typeof temperature === 'number') payload.temperature = temperature;
     if (isGpt5) {
       if (typeof (maxCompletionTokens ?? maxTokens) === 'number') payload.max_completion_tokens = maxCompletionTokens ?? maxTokens;
     } else if (typeof (maxTokens ?? maxCompletionTokens) === 'number') {
@@ -86,7 +102,17 @@ app.post('/api/draw', async (req, res) => {
 });
 
 app.post('/api/ask', async (req, res) => {
-  const { prompt, system, providers, models, temperature, maxTokens, timeoutMs, history, histories, showReasoning } = req.body || {};
+  const { prompt, system, providers, models, temperature, maxTokens, timeoutMs, history, histories, showReasoning, useModelConfig, modelId } = req.body || {};
+  console.log('=== /api/ask DEBUG ===');
+  console.log('modelId:', modelId);
+  console.log('prompt:', prompt);
+  console.log('histories keys:', Object.keys(histories || {}));
+  if (histories && modelId) {
+    console.log(`histories[${modelId}] length:`, Array.isArray(histories[modelId]) ? histories[modelId].length : 'not array');
+    console.log(`histories[${modelId}] content:`, histories[modelId]);
+  }
+  console.log('=====================');
+  
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     return res.status(400).json({ error: 'Missing prompt' });
   }
@@ -107,7 +133,7 @@ app.post('/api/ask', async (req, res) => {
     gemini: requested.gemini && hasKey.gemini,
   };
   const config = {
-    system: system || undefined,
+    system: (typeof system === 'string' && system.trim().length > 0) ? system : undefined,
     temperature: typeof temperature === 'number' ? temperature : DEFAULTS.temperature,
     maxTokens: typeof maxTokens === 'number' ? maxTokens : DEFAULTS.maxTokens,
     timeoutMs: typeof timeoutMs === 'number' ? timeoutMs : DEFAULTS.timeoutMs,
@@ -119,10 +145,55 @@ app.post('/api/ask', async (req, res) => {
     showReasoning: Boolean(showReasoning),
   };
 
+  // Optional: merge per-provider JSON defaults if requested
+  let eff = {
+    sys: { openai: config.system, claude: config.system, gemini: config.system },
+    temp: { openai: config.temperature, claude: config.temperature, gemini: config.temperature },
+    maxT: { openai: config.maxTokens, claude: config.maxTokens, gemini: config.maxTokens },
+    tmo: { openai: config.timeoutMs, claude: config.timeoutMs, gemini: config.timeoutMs },
+  };
+  try {
+    if (useModelConfig === true) {
+      const CFG = loadProviderConfig();
+      eff.sys.openai = (config.system !== undefined) ? config.system : CFG.openai.system;
+      eff.sys.claude = (config.system !== undefined) ? config.system : CFG.claude.system;
+      eff.sys.gemini = (config.system !== undefined) ? config.system : CFG.gemini.system;
+      eff.temp.openai = Number.isFinite(temperature) ? config.temperature : CFG.openai.temperature;
+      eff.temp.claude = Number.isFinite(temperature) ? config.temperature : CFG.claude.temperature;
+      eff.temp.gemini = Number.isFinite(temperature) ? config.temperature : CFG.gemini.temperature;
+      eff.maxT.openai = Number.isFinite(maxTokens) ? config.maxTokens : CFG.openai.maxTokens;
+      eff.maxT.claude = Number.isFinite(maxTokens) ? config.maxTokens : CFG.claude.maxTokens;
+      eff.maxT.gemini = Number.isFinite(maxTokens) ? config.maxTokens : CFG.gemini.maxTokens;
+      eff.tmo.openai = Number.isFinite(timeoutMs) ? config.timeoutMs : CFG.openai.timeoutMs;
+      eff.tmo.claude = Number.isFinite(timeoutMs) ? config.timeoutMs : CFG.claude.timeoutMs;
+      eff.tmo.gemini = Number.isFinite(timeoutMs) ? config.timeoutMs : CFG.gemini.timeoutMs;
+    }
+  } catch {}
+
   // Provider-specific histories with backward-compat fallback to a single 'history'
-  const historyOpenAI = histories?.openai ?? history ?? [];
-  const historyClaude = histories?.claude ?? history ?? [];
-  const historyGemini = histories?.gemini ?? history ?? [];
+  function pickHist(providerKey) {
+    if (Array.isArray(histories?.[providerKey])) {
+      console.log(`Using histories[${providerKey}] (${histories[providerKey].length} items)`);
+      return histories[providerKey];
+    }
+    // If client specified modelId (model1|model2|model3), prefer that card's history
+    if (typeof modelId === 'string' && Array.isArray(histories?.[modelId])) {
+      console.log(`Using histories[${modelId}] (${histories[modelId].length} items)`);
+      return histories[modelId];
+    }
+    // naive mapping: concatenate all model histories for provider
+    if (Array.isArray(histories?.model1) || Array.isArray(histories?.model2) || Array.isArray(histories?.model3)) {
+      const combined = [];
+      ['model1','model2','model3'].forEach(k=>{if(Array.isArray(histories?.[k])) combined.push(...histories[k]);});
+      console.log(`Using combined history (${combined.length} items)`);
+      return combined;
+    }
+    console.log('Using fallback history');
+    return history ?? [];
+  }
+  const historyOpenAI = pickHist('openai');
+  const historyClaude = pickHist('claude');
+  const historyGemini = pickHist('gemini');
 
   const jobs = [];
   const results = {};
@@ -139,11 +210,17 @@ app.post('/api/ask', async (req, res) => {
   } else if (enabled.openai) {
     const startedAt = nowMs();
     jobs.push(
-      withTimeout(
-        askOpenAI({ prompt, system: config.system, model: config.models.openai, temperature: config.temperature, maxTokens: config.maxTokens, history: historyOpenAI }),
-        config.timeoutMs,
-        'OpenAI'
-      ).then((r) => {
+      runWithRetries('OpenAI', () => (
+        askOpenAI({
+          prompt,
+          system: eff.sys.openai,
+          model: config.models.openai,
+          temperature: eff.temp.openai,
+          maxTokens: eff.maxT.openai,
+          history: historyOpenAI,
+          useModelConfig: useModelConfig === true,
+        })
+      ), 3, eff.tmo.openai).then((r) => {
         results.openai = {
           provider: 'openai',
           model: config.models.openai,
@@ -167,11 +244,16 @@ app.post('/api/ask', async (req, res) => {
   } else if (enabled.claude) {
     const startedAt = nowMs();
     jobs.push(
-      withTimeout(
-        askClaude({ prompt, system: config.system, model: config.models.claude, temperature: config.temperature, maxTokens: config.maxTokens, history: historyClaude }),
-        config.timeoutMs,
-        'Claude'
-      ).then((r) => {
+      runWithRetries('Claude', () => (
+        askClaude({
+          prompt,
+          system: eff.sys.claude,
+          model: config.models.claude,
+          temperature: eff.temp.claude,
+          maxTokens: eff.maxT.claude,
+          history: historyClaude,
+        })
+      ), 3, eff.tmo.claude).then((r) => {
         results.claude = {
           provider: 'claude',
           model: config.models.claude,
@@ -195,11 +277,16 @@ app.post('/api/ask', async (req, res) => {
   } else if (enabled.gemini) {
     const startedAt = nowMs();
     jobs.push(
-      withTimeout(
-        askGemini({ prompt, system: config.system, model: config.models.gemini, temperature: config.temperature, maxTokens: config.maxTokens, history: historyGemini }),
-        config.timeoutMs,
-        'Gemini'
-      ).then((r) => {
+      runWithRetries('Gemini', () => (
+        askGemini({
+          prompt,
+          system: eff.sys.gemini,
+          model: config.models.gemini,
+          temperature: eff.temp.gemini,
+          maxTokens: eff.maxT.gemini,
+          history: historyGemini,
+        })
+      ), 3, eff.tmo.gemini).then((r) => {
         results.gemini = {
           provider: 'gemini',
           model: config.models.gemini,
@@ -225,14 +312,26 @@ app.get('/api/providers', (req, res) => {
   });
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-  console.log('Env keys detected:', {
-    openai: Boolean(process.env.OPENAI_API_KEY),
-    claude: Boolean(process.env.ANTHROPIC_API_KEY),
-    gemini: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY),
+const basePort = Number(process.env.PORT || 3000);
+function startServer(port, retries = 5) {
+  const server = app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+    console.log('Env keys detected:', {
+      openai: Boolean(process.env.OPENAI_API_KEY),
+      claude: Boolean(process.env.ANTHROPIC_API_KEY),
+      gemini: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY),
+    });
   });
-});
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE' && retries > 0) {
+      console.warn(`Port ${port} is in use. Trying ${port + 1}...`);
+      startServer(port + 1, retries - 1);
+    } else {
+      console.error('Failed to start server:', err);
+      process.exit(1);
+    }
+  });
+}
+startServer(basePort);
 
 

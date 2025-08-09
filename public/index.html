@@ -29,12 +29,22 @@
         background-size: cover; /* Fill page without distortion (may crop) */
         padding-top: 76px; /* prevent overlap with fixed brand */
       }
+      body.video-on { background-image: none; }
       body.max-on { padding-top: 0; }
+      /* Dark mode theme overrides */
+      body.dark {
+        --text: #eef3fb;
+        --muted: #b7c3d6;
+        --border: rgba(255,255,255,0.16);
+        --card: rgba(28,34,44,0.55); /* lighter than before */
+      }
       /* Header removed per request */
       .container { max-width: 95%; margin: 0 auto; padding: 12px 16px; }
       h2 { margin: 0; font-weight: 700; letter-spacing: 0.2px; }
       p.small { color: var(--muted); margin-top: 6px; }
-      .grid-3, .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+      .grid-3, .row { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 16px; align-items: start; }
+      /* Ensure the answers row specifically uses wider center column */
+      .answers.row { grid-template-columns: 1fr 2fr 1fr; }
       .panel {
         position: relative;
         background: var(--card);
@@ -71,9 +81,72 @@
         border: 1px solid var(--border); border-radius: 12px; padding: 10px;
         min-height: 200px; white-space: pre-wrap; backdrop-filter: blur(12px);
         box-shadow: 0 8px 18px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
-        resize: both; overflow: auto; min-width: 240px; min-height: 200px;
+        resize: none; overflow: auto; min-width: 240px; min-height: 200px;
       }
-      .card h3 { position: relative; display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px 0; font-size: 16px; }
+      /* Subtle per-card tint; center uses a randomized base hue set in JS */
+      .card { --tint-h: 210; --tint-s: 65%; --tint-l: 96%; --tint-a: 0.65; }
+      .card { background: radial-gradient(circle at 50% 38%, hsla(var(--tint-h), var(--tint-s), var(--tint-l), var(--tint-a)), rgba(255,255,255,0.55) 68%); }
+      body.dark .card { background: radial-gradient(circle at 50% 38%, hsla(var(--tint-h), 65%, 34%, 0.32), rgba(20,24,30,0.60) 68%); border-color: rgba(255,255,255,0.14); }
+      /* Smooth brand-style panel animation (like top-left title) */
+      .card { overflow: hidden; }
+      .card::before {
+        content: '';
+        position: absolute; inset: -2px;
+        border-radius: inherit; pointer-events: none;
+        opacity: 0; transition: opacity 600ms ease;
+        background: linear-gradient(90deg,
+          hsl(210, 90%, 60%),
+          hsl(280, 90%, 62%),
+          hsl(340, 90%, 62%),
+          hsl(210, 90%, 60%)
+        );
+        background-size: 400% 100%;
+        mix-blend-mode: screen;
+      }
+      /* Subtle internal tint */
+      .card::before {
+        content: '';
+        position: absolute; inset: 0;
+        border-radius: inherit; pointer-events: none;
+        background: hsla(var(--tint-h,210), 96%, 60%, 0.06);
+        mix-blend-mode: screen;
+        opacity: 0; transition: opacity 300ms ease;
+      }
+      /* Border glow active only during loading */
+      .card::after {
+        content: '';
+        position: absolute; inset: 0;
+        border-radius: inherit; pointer-events: none;
+        box-shadow:
+          0 0 0 2px hsla(var(--tint-h,210), 96%, 60%, 0.55) inset,
+          0 0 24px hsla(var(--tint-h,210), 96%, 60%, 0.32) inset;
+        opacity: 0; transition: opacity 300ms ease;
+      }
+      .card.loading { animation: none; }
+      .card.loading::before { opacity: 0.28; animation: brandFlow 30s ease-in-out infinite; }
+      body.dark .card.loading::before { opacity: 0.22; }
+      .card.loading::after { opacity: 0.8; }
+      .card.loading::after { animation: hueSpin 90s linear infinite; }
+      .card.loading::before { animation: hueSpin 90s linear infinite; }
+      @keyframes hueSpin {
+        0%   { filter: hue-rotate(0deg); }
+        100% { filter: hue-rotate(360deg); }
+      }
+      .card.tinted::before { opacity: 1; }
+      /* brandFlow keyframes already defined for the brand title; reused here */
+      /* Custom resize handles on all edges and corners */
+      .resize-handle { position: absolute; background: transparent; border: none; z-index: 10; }
+      .resize-handle:hover { background: transparent; }
+      .resize-n  { top: -4px; left: 10px; right: 10px; height: 8px; cursor: n-resize; }
+      .resize-s  { bottom: -4px; left: 10px; right: 10px; height: 8px; cursor: s-resize; }
+      .resize-w  { left: -4px; top: 10px; bottom: 10px; width: 8px; cursor: w-resize; }
+      .resize-e  { right: -4px; top: 10px; bottom: 10px; width: 8px; cursor: e-resize; }
+      .resize-nw { top: -4px; left: -4px; width: 12px; height: 12px; cursor: nw-resize; border-radius: 6px; }
+      .resize-ne { top: -4px; right: -4px; width: 12px; height: 12px; cursor: ne-resize; border-radius: 6px; }
+      .resize-sw { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: sw-resize; border-radius: 6px; }
+      .resize-se { bottom: -4px; right: -4px; width: 12px; height: 12px; cursor: se-resize; border-radius: 6px; }
+      /* Individual card resizing only - no column resizers */
+      .card h3 { position: relative; display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px 0; font-size: 14px; font-weight: 500; }
       .card h3 { cursor: move; user-select: none; }
       .mini { margin-top: 4px; display: flex; gap: 8px; align-items: center; }
       .mini input[type="text"] { flex: 1; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); font-size: 15px; }
@@ -114,49 +187,24 @@
         0% { box-shadow: 0 0 0px rgba(255,255,255,0); transform: scale(1); }
         100% { box-shadow: 0 0 8px rgba(255,255,255,0.8); transform: scale(1.25); }
       }
-      .card h3 .title { display: flex; align-items: center; gap: 8px; position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; }
-      .card h3 .title span {
-        position: relative;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      .card h3 .title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        position: absolute;
+        right: 8px;
+        left: auto;
+        transform: none;
+        pointer-events: none;
+        max-width: calc(100% - 160px); /* leave room for traffic dots */
+        white-space: normal;           /* allow wrapping */
+        word-break: break-word;
+        text-align: right;
+        line-height: 1.2;
       }
-      .card.loading .title span {
-        animation: breath-text 1.8s ease-in-out infinite, gradientShift 3.5s linear infinite;
-        background: linear-gradient(120deg,
-          hsl(var(--hue,0), 90%, 65%),
-          #ffffff,
-          hsl(calc(var(--hue,0) + 60), 90%, 65%),
-          hsl(calc(var(--hue,0) + 120), 90%, 55%)
-        );
-        background-size: 300% 300%;
-        -webkit-background-clip: text; background-clip: text; color: transparent;
-        filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
-        position: relative;
-      }
-      /* Chromatic aberration ghost text */
-      .card.loading .title span::before,
-      .card.loading .title span::after {
-        content: attr(data-text);
-        position: absolute; inset: 0; pointer-events: none;
-        opacity: 0.6;
-        mix-blend-mode: screen;
-        filter: blur(0.3px);
-        animation: chroma 1.8s ease-in-out infinite;
-      }
-      .card.loading .title span::before { color: rgba(255, 60, 120, 0.45); transform: translate(-0.5px, 0); }
-      .card.loading .title span::after  { color: rgba(0, 200, 255, 0.45); transform: translate(0.5px, 0); }
-      @keyframes breath-text {
-        0%, 100% { opacity: 0.85; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.16); }
-      }
-      @keyframes gradientShift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-      @keyframes chroma {
-        0%, 100% { opacity: 0.5; }
-        50% { opacity: 0.85; }
-      }
+      .card h3 .title span { position: relative; font-weight: 500; letter-spacing: 0.2px; }
+      /* Remove previous shiny loading effects */
+      .card.loading .title span, .card.loading .title span::before, .card.loading .title span::after { animation: none; background: none; color: inherit; filter: none; }
       /* Removed shine/sparkle progress-like effects; only emoji sparks remain */
       /* Emoji sparks that pop around model names while loading */
       .spark {
@@ -179,6 +227,9 @@
       .dot.red { background: #ff5f56; }
       .dot.yellow { background: #ffbd2e; }
       .dot.green { background: #27c93f; }
+      /* Additional beautiful dots for height controls */
+      .dot.blue { background: #0a84ff; }
+      .dot.purple { background: #af52de; }
       .card.maximized { position: static; width: 100%; height: auto; z-index: auto; padding: 16px; border-radius: 16px; min-height: calc(100vh - 200px); margin: 0; }
       .card.maximized .convo { max-height: none; min-height: 60vh; padding: 12px; overflow-y: visible; }
       .card.maximized .msg { font-size: 1.08rem; line-height: 1.6; padding: 12px 14px; }
@@ -189,12 +240,15 @@
       .answers.single { display: block; }
       .answers.single .card { display: none; }
       .answers.single .card.maximized { display: block; width: 100%; max-width: none; }
+      /* Isolated layout: each card positioned independently */
+      .answers.isolated { position: relative; display: block; min-height: 500px; }
+      .answers.isolated .card { position: absolute; }
       .convo { position: relative; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; border-radius: 8px; padding: 4px; background: rgba(255,255,255,0.55); border: 1px solid var(--border); }
       .convo[data-empty="true"] { border-color: transparent; background: transparent; }
       .msg { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); }
       .msg.user { background: rgba(10,132,255,0.08); border-color: rgba(10,132,255,0.2); }
       .msg.assistant { background: rgba(0,0,0,0.03); }
-      .latency { font-size: 12px; color: var(--muted); }
+      .latency { display:none; }
       .error { color: var(--danger); white-space: pre-wrap; }
       footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
       @media (max-width: 900px) { .row, .grid-3 { grid-template-columns: 1fr; } }
@@ -213,7 +267,8 @@
         top: 12px;
         left: 16px;
         z-index: 1000;
-        font-weight: 700;
+        font-weight: 800;
+        font-size: 1.5em;
         letter-spacing: 0.4px;
         color: #0b1220;
         background: rgba(255,255,255,0.6);
@@ -228,10 +283,71 @@
         pointer-events: none;
       }
       .brand-fixed.hidden { opacity: 0; }
+      body.dark .brand-fixed { color: #eef4ff; background: rgba(24,28,36,0.48); border-color: rgba(255,255,255,0.14); }
+
+      /* Animated gradient text for brand */
+      .brand-text {
+        background: linear-gradient(90deg,
+          hsl(210, 90%, 55%),
+          hsl(280, 90%, 60%),
+          hsl(340, 90%, 60%),
+          hsl(210, 90%, 55%)
+        );
+        background-size: 400% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent;
+        animation: brandFlow 30s ease-in-out infinite;
+        will-change: background-position;
+        display: inline-block;
+      }
+      @keyframes brandFlow {
+        0%   { background-position: 0% 50%; }
+        50%  { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .brand-text { animation-duration: 60s; }
+      }
+
+      /* Fullscreen background video */
+      .bg-video { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; display: none; filter: saturate(1.05) brightness(0.95); }
+      body.video-on .bg-video { display: block; }
+
+      /* Dark mode buttons */
+      body.dark .btn,
+      body.dark .mini-btn,
+      body.dark .icon-btn {
+        color: #eef3fb;
+        border-color: rgba(10,132,255,0.45);
+        background: linear-gradient(180deg, rgba(10,132,255,0.32), rgba(10,132,255,0.22));
+      }
+
+      /* Dark mode inputs */
+      body.dark input[type="text"],
+      body.dark textarea,
+      body.dark select,
+      body.dark input[type="number"] {
+        background: rgba(24,26,32,0.92);
+        color: #eef3fb;
+        border-color: rgba(255,255,255,0.12);
+      }
+
+      body.dark select option { color: #0b1220; }
+
+      /* Dark mode conversation backgrounds */
+      body.dark .convo { background: rgba(30,34,42,0.72); border-color: rgba(255,255,255,0.10); }
+      body.dark .convo[data-empty="true"] { background: transparent; border-color: transparent; }
+
+      body.dark .msg { background: rgba(48,52,60,0.80); border-color: rgba(255,255,255,0.14); }
+      body.dark .msg.user { background: rgba(10,132,255,0.18); border-color: rgba(10,132,255,0.35); }
     </style>
   </head>
   <body>
-    <div class="brand-fixed" id="brand">Many Answers</div>
+    <video class="bg-video" id="bgVideo" autoplay loop muted playsinline preload="auto" poster="michael-fousert-lE5-z4nTCTQ-unsplash.jpg">
+      <source src="bg.webm" type="video/webm" />
+      <source src="bg.mp4" type="video/mp4" />
+    </video>
+    <div class="brand-fixed" id="brand"><span class="brand-text">🤔 Many Answers</span></div>
     <div class="container">
       <div class="panel" id="panel-top" style="display:grid; gap:12px;">
         <div>
@@ -242,79 +358,86 @@
           <div>
             <label>Model 1</label>
             <select id="model-1">
-              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10 (OpenAI)</option>
-              <option value="o3-2025-04-16">o3 2025-04-16 (OpenAI)</option>
-              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16 (OpenAI)</option>
-              <option value="gpt-5-mini-2025-08-07">GPT-5 Mini (OpenAI)</option>
-              <option value="gpt-4o">GPT-4o (OpenAI)</option>
-              <option value="gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
-              <option value="gpt-4.1">GPT-4.1 (OpenAI)</option>
-              <option value="gpt-4-turbo">GPT-4 Turbo (OpenAI)</option>
-              <option value="claude-opus-4-1-20250805" selected>Claude Opus 4.1 20250805 (Anthropic)</option>
-              <option value="claude-4.1-opus">Claude Opus 4.1 (Anthropic)</option>
-              <option value="claude-4-sonnet">Claude Sonnet 4 (Anthropic)</option>
-              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Anthropic)</option>
-              <option value="claude-3-opus-latest">Claude 3 Opus (Anthropic)</option>
-              <option value="claude-3-haiku-latest">Claude 3 Haiku (Anthropic)</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Google)</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Google)</option>
-              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (Google)</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
+              <option value="o3-2025-04-16">o3 2025-04-16</option>
+              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16</option>
+              <option value="gpt-5-mini-2025-08-07">GPT-5 Mini</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="claude-opus-4-1-20250805" selected>Claude Opus 4.1 20250805</option>
+              <option value="claude-4.1-opus">Claude Opus 4.1</option>
+              <option value="claude-4-sonnet">Claude Sonnet 4</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+              <option value="claude-3-opus-latest">Claude 3 Opus</option>
+              <option value="claude-3-haiku-latest">Claude 3 Haiku</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
             </select>
           </div>
           <div>
             <label>Model 2</label>
             <select id="model-2">
               <option value="">-- Disabled --</option>
-              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805 (Anthropic)</option>
-              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10 (OpenAI)</option>
-              <option value="o3-2025-04-16">o3 2025-04-16 (OpenAI)</option>
-              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16 (OpenAI)</option>
-              <option value="gpt-5-mini-2025-08-07" selected>GPT-5 Mini (OpenAI)</option>
-              <option value="gpt-4o">GPT-4o (OpenAI)</option>
-              <option value="gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
-              <option value="gpt-4.1">GPT-4.1 (OpenAI)</option>
-              <option value="gpt-4-turbo">GPT-4 Turbo (OpenAI)</option>
-              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805 (Anthropic)</option>
-              <option value="claude-4.1-opus">Claude Opus 4.1 (Anthropic)</option>
-              <option value="claude-4-sonnet">Claude Sonnet 4 (Anthropic)</option>
-              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Anthropic)</option>
-              <option value="claude-3-opus-latest">Claude 3 Opus (Anthropic)</option>
-              <option value="claude-3-haiku-latest">Claude 3 Haiku (Anthropic)</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Google)</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Google)</option>
-              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (Google)</option>
+              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
+              <option value="o3-2025-04-16">o3 2025-04-16</option>
+              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16</option>
+              <option value="gpt-5-mini-2025-08-07" selected>GPT-5 Mini</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805</option>
+              <option value="claude-4.1-opus">Claude Opus 4.1</option>
+              <option value="claude-4-sonnet">Claude Sonnet 4</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+              <option value="claude-3-opus-latest">Claude 3 Opus</option>
+              <option value="claude-3-haiku-latest">Claude 3 Haiku</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
             </select>
           </div>
           <div>
             <label>Model 3</label>
             <select id="model-3">
               <option value="">-- Disabled --</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
-              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10 (OpenAI)</option>
-              <option value="o3-2025-04-16" selected>o3 2025-04-16 (OpenAI)</option>
-              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16 (OpenAI)</option>
-              <option value="gpt-5-mini-2025-08-07">GPT-5 Mini (OpenAI)</option>
-              <option value="gpt-4o">GPT-4o (OpenAI)</option>
-              <option value="gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
-              <option value="gpt-4.1">GPT-4.1 (OpenAI)</option>
-              <option value="gpt-4-turbo">GPT-4 Turbo (OpenAI)</option>
-              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805 (Anthropic)</option>
-              <option value="claude-4.1-opus">Claude Opus 4.1 (Anthropic)</option>
-              <option value="claude-4-sonnet">Claude Sonnet 4 (Anthropic)</option>
-              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Anthropic)</option>
-              <option value="claude-3-opus-latest">Claude 3 Opus (Anthropic)</option>
-              <option value="claude-3-haiku-latest">Claude 3 Haiku (Anthropic)</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Google)</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Google)</option>
-              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (Google)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
+              <option value="o3-2025-04-16" selected>o3 2025-04-16</option>
+              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16</option>
+              <option value="gpt-5-mini-2025-08-07">GPT-5 Mini</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805</option>
+              <option value="claude-4.1-opus">Claude Opus 4.1</option>
+              <option value="claude-4-sonnet">Claude Sonnet 4</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+              <option value="claude-3-opus-latest">Claude 3 Opus</option>
+              <option value="claude-3-haiku-latest">Claude 3 Haiku</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
             </select>
           </div>
+        </div>
+        <div class="toolbar" style="margin-top:6px; display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+          <label class="switch"><input type="checkbox" id="toggle-video" /> Dynamic background</label>
+          <label class="switch"><input type="checkbox" id="toggle-dark" /> Dark mode</label>
+          <input type="file" id="bgUpload" accept="image/*" style="display:none" />
+          <button id="bgUploadBtn" class="btn btn-sm">Upload background</button>
+          <button id="bgClearBtn" class="btn btn-sm">Clear background</button>
         </div>
         <div class="toolbar">
           <button id="askBtn" class="btn btn-wide">Ask all</button>
@@ -322,6 +445,7 @@
           <button id="drawBtn" class="btn">Draw Model 1</button>
           <button id="advBtn" class="btn btn-sm">Advanced</button>
           <button id="resetAllBtn" class="btn btn-sm" title="Clear all conversations">Start over</button>
+          <button id="resetLayoutBtn" class="btn btn-sm" title="Reset card layout to grid">Reset layout</button>
           <label class="switch"><input type="checkbox" id="enable-model1" checked /> Model 1</label>
           <label class="switch"><input type="checkbox" id="enable-model2" checked /> Model 2</label>
           <label class="switch"><input type="checkbox" id="enable-model3" checked /> Model 3</label>
@@ -357,7 +481,7 @@
       </div>
 
 
-      <div class="answers row" id="answers" style="margin-top:16px;">
+      <div class="answers row" id="answers" style="margin-top:16px; position: relative;">
         <div class="card" id="card-model1">
           <h3>
             <span style="display:inline-flex; align-items:center; gap:8px;">
@@ -365,11 +489,13 @@
                 <span class="dot red" id="dot-hide-model1" title="Hide"></span>
                 <span class="dot yellow" id="dot-restore-model1" title="Restore"></span>
                 <span class="dot green" id="dot-max-model1" title="Maximize"></span>
+                <span class="dot blue" id="dot-tall-model1" title="Taller"></span>
+                <span class="dot purple" id="dot-short-model1" title="Shorter"></span>
               </span>
               <div class="title"><span data-text="Model 1" id="model1-name">Model 1</span></div>
               <button class="icon-btn" id="clear-model1" title="Clear this conversation">Clear</button>
             </span>
-            <span class="latency" id="lat-model1"></span>
+            
           </h3>
           <div class="convo" id="model1" data-empty="true"></div>
           <div class="mini">
@@ -384,11 +510,13 @@
                 <span class="dot red" id="dot-hide-model2" title="Hide"></span>
                 <span class="dot yellow" id="dot-restore-model2" title="Restore"></span>
                 <span class="dot green" id="dot-max-model2" title="Maximize"></span>
+                <span class="dot blue" id="dot-tall-model2" title="Taller"></span>
+                <span class="dot purple" id="dot-short-model2" title="Shorter"></span>
               </span>
               <div class="title"><span data-text="Model 2" id="model2-name">Model 2</span></div>
               <button class="icon-btn" id="clear-model2" title="Clear this conversation">Clear</button>
             </span>
-            <span class="latency" id="lat-model2"></span>
+            
           </h3>
           <div class="convo" id="model2" data-empty="true"></div>
           <div class="mini">
@@ -403,11 +531,13 @@
                 <span class="dot red" id="dot-hide-model3" title="Hide"></span>
                 <span class="dot yellow" id="dot-restore-model3" title="Restore"></span>
                 <span class="dot green" id="dot-max-model3" title="Maximize"></span>
+                <span class="dot blue" id="dot-tall-model3" title="Taller"></span>
+                <span class="dot purple" id="dot-short-model3" title="Shorter"></span>
               </span>
               <div class="title"><span data-text="Model 3" id="model3-name">Model 3</span></div>
               <button class="icon-btn" id="clear-model3" title="Clear this conversation">Clear</button>
             </span>
-            <span class="latency" id="lat-model3"></span>
+            
           </h3>
           <div class="convo" id="model3" data-empty="true"></div>
           <div class="mini">
@@ -457,7 +587,217 @@
       el('model-1').addEventListener('change', updateModelNames);
       el('model-2').addEventListener('change', updateModelNames);
       el('model-3').addEventListener('change', updateModelNames);
+
+      // Persistence: remember last selected models and toggles in localStorage
+      const LS = window.localStorage;
+      function setSelectIfPresent(selectId, value) {
+        const sel = el(selectId);
+        if (!sel || typeof value !== 'string' || !value) return;
+        const exists = Array.from(sel.options).some((opt) => opt.value === value);
+        if (exists) sel.value = value;
+      }
+      function restorePreferences() {
+        // Models
+        setSelectIfPresent('model-1', LS.getItem('ma:model-1'));
+        setSelectIfPresent('model-2', LS.getItem('ma:model-2'));
+        setSelectIfPresent('model-3', LS.getItem('ma:model-3'));
+        // Toggles
+        const e1 = LS.getItem('ma:enable-model1'); if (e1 !== null) el('enable-model1').checked = e1 === '1';
+        const e2 = LS.getItem('ma:enable-model2'); if (e2 !== null) el('enable-model2').checked = e2 === '1';
+        const e3 = LS.getItem('ma:enable-model3'); if (e3 !== null) el('enable-model3').checked = e3 === '1';
+        const sr = LS.getItem('ma:show-reasoning'); if (sr !== null) el('show-reasoning').checked = sr === '1';
+        const dv = LS.getItem('ma:video'); if (dv !== null) { const on = dv === '1'; el('toggle-video').checked = on; /* enable video after it becomes ready; keep image until then */ }
+        const dk = LS.getItem('ma:dark'); if (dk !== null) { const on = dk === '1'; el('toggle-dark').checked = on; document.body.classList.toggle('dark', on); }
+        // Advanced JSON (optional)
+        const advArea = document.getElementById('advancedJson');
+        const advSaved = LS.getItem('ma:advancedJson');
+        if (advArea && typeof advSaved === 'string' && advSaved.length) advArea.value = advSaved;
+        // Apply visuals after restoring
+        updateModelNames();
+        applyVisibility();
+      }
+      function wirePersistence() {
+        // Model selects
+        el('model-1').addEventListener('change', () => LS.setItem('ma:model-1', el('model-1').value || ''));
+        el('model-2').addEventListener('change', () => LS.setItem('ma:model-2', el('model-2').value || ''));
+        el('model-3').addEventListener('change', () => LS.setItem('ma:model-3', el('model-3').value || ''));
+        // Toggles
+        el('enable-model1').addEventListener('change', () => LS.setItem('ma:enable-model1', el('enable-model1').checked ? '1' : '0'));
+        el('enable-model2').addEventListener('change', () => LS.setItem('ma:enable-model2', el('enable-model2').checked ? '1' : '0'));
+        el('enable-model3').addEventListener('change', () => LS.setItem('ma:enable-model3', el('enable-model3').checked ? '1' : '0'));
+        el('show-reasoning').addEventListener('change', () => LS.setItem('ma:show-reasoning', el('show-reasoning').checked ? '1' : '0'));
+        // Advanced JSON
+        const advArea = document.getElementById('advancedJson');
+        if (advArea) {
+          let advTimer = null;
+          advArea.addEventListener('input', () => {
+            if (advTimer) clearTimeout(advTimer);
+            advTimer = setTimeout(() => LS.setItem('ma:advancedJson', advArea.value || ''), 250);
+          });
+        }
+        // New toggles
+        const tv = el('toggle-video');
+        const td = el('toggle-dark');
+        function applyVideoToggle(on) {
+          const video = document.getElementById('bgVideo');
+          LS.setItem('ma:video', on ? '1' : '0');
+          if (!video) return;
+          if (on) {
+            const show = () => { document.body.classList.add('video-on'); };
+            if (video.readyState >= 2) show(); else video.addEventListener('loadeddata', show, { once: true });
+            video.play?.().catch(() => {});
+          } else {
+            document.body.classList.remove('video-on');
+            video.pause?.();
+          }
+        }
+        if (tv) tv.addEventListener('change', () => { const on = tv.checked; applyVideoToggle(on); });
+        if (td) td.addEventListener('change', () => { const on = td.checked; document.body.classList.toggle('dark', on); LS.setItem('ma:dark', on ? '1' : '0'); });
+        // Background upload
+        const upBtn = document.getElementById('bgUploadBtn');
+        const clrBtn = document.getElementById('bgClearBtn');
+        const upInp = document.getElementById('bgUpload');
+        function applyBg(url) {
+          try {
+            LS.setItem('ma:bg-image', url || '');
+          } catch {}
+          if (url) {
+            document.body.style.backgroundImage = `url('${url}')`;
+            document.body.classList.remove('video-on');
+            if (tv) tv.checked = false;
+          } else {
+            document.body.style.backgroundImage = "url('michael-fousert-lE5-z4nTCTQ-unsplash.jpg')";
+          }
+        }
+        if (upBtn && upInp) {
+          upBtn.addEventListener('click', () => upInp.click());
+          upInp.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => applyBg(reader.result);
+            reader.readAsDataURL(file);
+          });
+        }
+        if (clrBtn) clrBtn.addEventListener('click', () => applyBg(''));
+        // Restore custom bg if any
+        const savedBg = LS.getItem('ma:bg-image');
+        if (savedBg) applyBg(savedBg);
+        // If user had video enabled previously, enable it only after it's ready
+        const wantVideo = LS.getItem('ma:video') === '1';
+        if (wantVideo) applyVideoToggle(true);
+      }
+      restorePreferences();
+      wirePersistence();
       updateModelNames();
+
+      // ----- Layout persistence (drag positions) -----
+      function layoutStorageKey() { return 'ma:layout'; }
+      function hasSavedLayout() { return !!LS.getItem(layoutStorageKey()); }
+      function saveLayoutForCard(cardId, spec) {
+        let current = null;
+        try { current = JSON.parse(LS.getItem(layoutStorageKey()) || '{}'); } catch {}
+        if (!current || typeof current !== 'object') current = {};
+        if (!current.cards) current.cards = {};
+        current.cards[cardId] = spec;
+        LS.setItem(layoutStorageKey(), JSON.stringify(current));
+      }
+      function applySavedLayout() {
+        let saved = null;
+        try { saved = JSON.parse(LS.getItem(layoutStorageKey()) || 'null'); } catch {}
+        if (!saved || !saved.cards) return;
+        const container = document.getElementById('answers');
+        if (!container) return;
+        
+        // Switch to isolated layout if we have any saved positions
+        container.classList.add('isolated');
+        
+        ['card-model1','card-model2','card-model3'].forEach((id) => {
+          const spec = saved.cards[id];
+          const card = document.getElementById(id);
+          if (!card || !spec) return;
+          
+          // Make all cards absolutely positioned in isolated mode
+          card.style.position = 'absolute';
+          card.style.left = (spec.left ?? 0) + 'px';
+          card.style.top = (spec.top ?? 0) + 'px';
+          card.style.width = (spec.width ?? 400) + 'px';
+          card.style.height = (spec.height ?? 300) + 'px';
+          card.style.zIndex = String(spec.zIndex ?? 1);
+        });
+        
+        updateIsolatedLayout();
+      }
+      function clearSavedLayout() {
+        LS.removeItem(layoutStorageKey());
+        const container = document.getElementById('answers');
+        if (!container) return;
+        container.classList.remove('isolated');
+        container.style.minHeight = '';
+        ['card-model1','card-model2','card-model3'].forEach((id) => {
+          const card = document.getElementById(id);
+          if (!card) return;
+          card.style.position = '';
+          card.style.left = '';
+          card.style.top = '';
+          card.style.width = '';
+          card.style.height = '';
+          card.style.zIndex = '';
+        });
+      }
+      function updateContainerHeightForLayout() {
+        const container = document.getElementById('answers');
+        if (!container || !container.classList.contains('custom-layout')) return;
+        const cards = ['card-model1','card-model2','card-model3']
+          .map((id) => document.getElementById(id))
+          .filter(Boolean);
+        let maxBottom = 0;
+        cards.forEach((c) => {
+          const top = parseFloat(c.style.top) || 0;
+          const rect = c.getBoundingClientRect();
+          const height = rect.height || 0;
+          const bottom = top + height;
+          if (bottom > maxBottom) maxBottom = bottom;
+        });
+        container.style.height = Math.max(420, Math.ceil(maxBottom + 16)) + 'px';
+      }
+
+      // Restore saved layouts on page load
+      applySavedLayout();
+      // Keep container height in sync when window resizes
+      window.addEventListener('resize', updateIsolatedLayout);
+
+      // Save all current absolute positions back to storage (for safety on reloads)
+      function saveAllLayouts() {
+        const container = document.getElementById('answers');
+        if (!container || !container.classList.contains('custom-layout')) return;
+        const current = { cards: {} };
+        ['card-model1','card-model2','card-model3'].forEach((id) => {
+          const card = document.getElementById(id);
+          if (!card) return;
+          const left = parseFloat(card.style.left);
+          const top = parseFloat(card.style.top);
+          const width = parseFloat(card.style.width);
+          const height = parseFloat(card.style.height);
+          const zIndex = parseInt(card.style.zIndex);
+          if (!Number.isFinite(left) || !Number.isFinite(top) || !Number.isFinite(width)) return;
+          current.cards[id] = { 
+            left: Math.round(left), 
+            top: Math.round(top), 
+            width: Math.round(width),
+            height: Number.isFinite(height) ? Math.round(height) : undefined,
+            zIndex: Number.isFinite(zIndex) ? zIndex : 1
+          };
+        });
+        try { LS.setItem(layoutStorageKey(), JSON.stringify(current)); } catch {}
+      }
+      // window.addEventListener('beforeunload', saveAllLayouts);
+
+      // Reset helper: restore default 1-2-1 grid
+      function clearSavedColumns() {
+        const answers = document.getElementById('answers');
+        if (answers) answers.style.gridTemplateColumns = '1fr 2fr 1fr';
+      }
       
       // Reasoning helpers (for thinking models like OpenAI o3*)
       function isThinkingModel(modelValue) {
@@ -490,25 +830,37 @@
         titleSpan.appendChild(spark);
         spark.addEventListener('animationend', () => spark.remove());
       }
-      function startSparks(modelId) {
-        if (__sparkTimers[modelId]) return;
-        const card = document.getElementById('card-' + modelId);
-        if (!card) return;
-        __sparkTimers[modelId] = setInterval(() => emitSparkFor(card), 350 + Math.random()*250);
-      }
-      function stopSparks(modelId) {
-        const t = __sparkTimers[modelId];
-        if (t) { clearInterval(t); __sparkTimers[modelId] = null; }
-      }
+      function startSparks(modelId) { /* disabled visual sparks in subtle mode */ }
+      function stopSparks(modelId) { const t = __sparkTimers[modelId]; if (t) { clearInterval(t); __sparkTimers[modelId] = null; } }
       function setLoading(modelId, loading) {
         const card = document.getElementById(`card-${modelId}`);
         if (!card) return;
-        card.classList.toggle('loading', loading);
         if (loading) {
-          const hue = Math.floor(Math.random() * 360);
-          card.querySelector('.title span').style.setProperty('--hue', hue);
+          card.classList.add('loading');
+          // Randomize blob positions per session for partial coverage
+          const b1x = (20 + Math.random() * 60).toFixed(1) + '%';
+          const b1y = (20 + Math.random() * 60).toFixed(1) + '%';
+          const b2x = (20 + Math.random() * 60).toFixed(1) + '%';
+          const b2y = (20 + Math.random() * 60).toFixed(1) + '%';
+          card.style.setProperty('--b1x', b1x);
+          card.style.setProperty('--b1y', b1y);
+          card.style.setProperty('--b2x', b2x);
+          card.style.setProperty('--b2y', b2y);
+        } else {
+          card.classList.remove('loading');
+        }
+        if (loading) {
+          // Set hue once per card; keep afterwards
+          let hue = card.dataset.hue;
+          if (!hue) {
+            hue = Math.floor(Math.random() * 360);
+            card.dataset.hue = hue;
+          }
+          card.style.setProperty('--tint-h', hue);
+          card.classList.remove('tinted');
           startSparks(modelId);
         } else {
+          card.classList.add('tinted');
           stopSparks(modelId);
         }
       }
@@ -528,7 +880,7 @@
         } else if (visibleCount === 2) {
           answers.style.gridTemplateColumns = '1fr 1fr';
         } else {
-          answers.style.gridTemplateColumns = '1fr 1fr 1fr';
+          answers.style.gridTemplateColumns = '1fr 2fr 1fr';
         }
         
         document.getElementById('card-model1').style.display = vis.model1 ? '' : 'none';
@@ -539,6 +891,8 @@
       document.getElementById('enable-model2').addEventListener('change', applyVisibility);
       document.getElementById('enable-model3').addEventListener('change', applyVisibility);
       applyVisibility();
+      // Re-apply saved layout after visibility adjustments
+      applySavedLayout();
 
       // Hide/Maximize/Restore
       let __prevVisibility = null;
@@ -557,19 +911,31 @@
         checkboxFor('model2').checked = modelId === 'model2';
         checkboxFor('model3').checked = modelId === 'model3';
         applyVisibility();
-        // Switch answers area to single mode and enlarge selected
+        // Switch answers area to single mode and enlarge selected (preserve isolated positions)
         const answers = document.getElementById('answers');
         answers.classList.add('single');
-        // Clear any inline styles left from dragging so layout can flow/scroll
         ['model1','model2','model3'].forEach((m) => {
           const card = document.getElementById('card-' + m);
           if (!card) return;
+          const isTarget = modelId === m;
+          if (isTarget) {
+            // Save current inline geometry for later restore
+            card.dataset.prevPosition = card.style.position || '';
+            card.dataset.prevLeft = card.style.left || '';
+            card.dataset.prevTop = card.style.top || '';
+            card.dataset.prevWidth = card.style.width || '';
+            card.dataset.prevHeight = card.style.height || '';
+            card.dataset.prevZ = card.style.zIndex || '';
+            // Clear to allow CSS .card.maximized to take full width/height
           card.style.position = '';
           card.style.left = '';
           card.style.top = '';
           card.style.width = '';
+            card.style.height = '';
+            // keep zIndex cleared so stacking doesn't block others when exiting
           card.style.zIndex = '';
-          card.classList.toggle('maximized', modelId === m);
+          }
+          card.classList.toggle('maximized', isTarget);
         });
         // Hide brand for full utilization and scroll to the card
         document.getElementById('brand').classList.add('hidden');
@@ -587,13 +953,22 @@
         ['model1','model2','model3'].forEach((m) => {
           const card = document.getElementById('card-' + m);
           if (!card) return;
+          // Restore geometry if we saved it during maximize
+          if (card.dataset.prevPosition !== undefined) {
+            card.style.position = card.dataset.prevPosition;
+            card.style.left = card.dataset.prevLeft;
+            card.style.top = card.dataset.prevTop;
+            card.style.width = card.dataset.prevWidth;
+            card.style.height = card.dataset.prevHeight;
+            card.style.zIndex = card.dataset.prevZ;
+            delete card.dataset.prevPosition;
+            delete card.dataset.prevLeft;
+            delete card.dataset.prevTop;
+            delete card.dataset.prevWidth;
+            delete card.dataset.prevHeight;
+            delete card.dataset.prevZ;
+          }
           card.classList.remove('maximized');
-          // Also clear any inline styles set by dragging
-          card.style.position = '';
-          card.style.left = '';
-          card.style.top = '';
-          card.style.width = '';
-          card.style.zIndex = '';
         });
         checkboxFor('model1').checked = __prevVisibility.model1;
         checkboxFor('model2').checked = __prevVisibility.model2;
@@ -602,15 +977,29 @@
         __prevVisibility = null;
         document.getElementById('brand').classList.remove('hidden');
         document.body.classList.remove('max-on');
+        // If isolated layout was never initialized, just reset grid like a safe fallback
+        const answersHadIsolated = document.getElementById('answers').classList.contains('isolated');
+        if (!answersHadIsolated) {
+          clearSavedLayout();
+          clearSavedColumns();
+        }
       }
 
-      // Draggable cards (drag via h3)
+
+
+      // Draggable cards (for free positioning); kept in case user prefers manual layout
       function makeDraggable(cardId) {
         const card = document.getElementById(cardId);
         if (!card) return;
-        const handle = card.querySelector('h3');
+        const handle = card; // use the whole card as drag handle, with guards below
         let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+        function isInteractive(el) { return !!el.closest('input, textarea, select, button, .mini, .convo, .drag-handle'); }
         function onPointerDown(e) {
+          if (isInteractive(e.target)) return;
+          
+          // Initialize isolated mode for all cards if not already done
+          initializeAllCardsForIsolation();
+          
           dragging = true;
           const rect = card.getBoundingClientRect();
           startLeft = rect.left;
@@ -643,12 +1032,250 @@
           document.removeEventListener('pointerup', onPointerUp);
           document.removeEventListener('touchmove', onPointerMove);
           document.removeEventListener('touchend', onPointerUp);
+          // Convert fixed drag position into absolute position within the answers container and persist
+          const container = document.getElementById('answers');
+          if (!container) return;
+          container.classList.add('isolated');
+          
+          const rect = card.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+          const left = rect.left - containerRect.left + (container.scrollLeft || 0);
+          const top = rect.top - containerRect.top + (container.scrollTop || 0);
+          
+          card.style.position = 'absolute';
+          card.style.left = `${Math.max(0, Math.round(left))}px`;
+          card.style.top = `${Math.max(0, Math.round(top))}px`;
+          card.style.width = `${Math.round(rect.width)}px`;
+          card.style.zIndex = '1';
+          
+          const spec = getCurrentCardSpec(cardId);
+          if (spec) {
+            saveLayoutForCard(cardId, spec);
+          }
+          updateIsolatedLayout();
+          card.classList.remove('dragging');
         }
         handle.addEventListener('pointerdown', onPointerDown);
         handle.addEventListener('touchstart', onPointerDown, { passive: true });
+        // Also add four corner drag handles for explicit dragging
+        ['tl','tr','bl','br'].forEach((pos) => {
+          const h = document.createElement('div');
+          h.className = `drag-handle ${pos}`;
+          card.appendChild(h);
+          h.addEventListener('pointerdown', (e) => {
+            dragging = true;
+            const rect = card.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            startX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+            startY = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+            card.style.position = 'fixed';
+            card.style.left = `${startLeft}px`;
+            card.style.top = `${startTop}px`;
+            card.style.width = `${rect.width}px`;
+            card.style.zIndex = 2000;
+            card.classList.add('dragging');
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+            document.addEventListener('touchmove', onPointerMove, { passive: false });
+            document.addEventListener('touchend', onPointerUp);
+            e.stopPropagation();
+            e.preventDefault();
+          });
+        });
       }
+
+      // Bring clicked card to front
+      function bringToFront(cardId) {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        
+        // Find the highest z-index among all cards
+        const allCards = ['card-model1', 'card-model2', 'card-model3'];
+        let maxZ = 0;
+        allCards.forEach(id => {
+          const c = document.getElementById(id);
+          if (c && c.style.zIndex) {
+            const z = parseInt(c.style.zIndex) || 0;
+            if (z > maxZ) maxZ = z;
+          }
+        });
+        
+        // Set this card's z-index higher than the max
+        card.style.zIndex = String(maxZ + 1);
+        
+        // Save the updated z-index
+        const currentSpec = getCurrentCardSpec(cardId);
+        if (currentSpec) {
+          currentSpec.zIndex = maxZ + 1;
+          saveLayoutForCard(cardId, currentSpec);
+        }
+      }
+      
+      // Get current card specifications
+      function getCurrentCardSpec(cardId) {
+        const card = document.getElementById(cardId);
+        if (!card) return null;
+        
+        return {
+          left: parseFloat(card.style.left) || 0,
+          top: parseFloat(card.style.top) || 0,
+          width: parseFloat(card.style.width) || 240,
+          height: parseFloat(card.style.height) || 200,
+          zIndex: parseInt(card.style.zIndex) || 1
+        };
+      }
+
+      // Make cards completely isolated - resizable and positionable independently
+      function makeResizable(cardId) {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        
+        // Add click-to-front functionality (but only if already in isolated mode)
+        card.addEventListener('pointerdown', () => {
+          const container = document.getElementById('answers');
+          if (container && container.classList.contains('isolated')) {
+            bringToFront(cardId);
+          }
+        });
+        card.addEventListener('click', () => {
+          const container = document.getElementById('answers');
+          if (container && container.classList.contains('isolated')) {
+            bringToFront(cardId);
+          }
+        });
+        
+        // Add resize handles
+        const handles = ['n','s','w','e','nw','ne','sw','se'];
+        handles.forEach(dir => {
+          const handle = document.createElement('div');
+          handle.className = `resize-handle resize-${dir}`;
+          card.appendChild(handle);
+          
+          handle.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Initialize isolated mode for all cards if not already done
+            initializeAllCardsForIsolation();
+            
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startRect = card.getBoundingClientRect();
+            const container = document.getElementById('answers');
+            const containerRect = container.getBoundingClientRect();
+            
+            function onMove(e) {
+              const dx = e.clientX - startX;
+              const dy = e.clientY - startY;
+              
+              let newWidth = startRect.width;
+              let newHeight = startRect.height;
+              let newLeft = startRect.left - containerRect.left;
+              let newTop = startRect.top - containerRect.top;
+              
+              // Calculate new dimensions and position based on direction
+              if (dir.includes('e')) newWidth = Math.max(240, startRect.width + dx);
+              if (dir.includes('w')) { 
+                newWidth = Math.max(240, startRect.width - dx); 
+                newLeft = Math.max(0, (startRect.left - containerRect.left) + dx);
+              }
+              if (dir.includes('s')) newHeight = Math.max(200, startRect.height + dy);
+              if (dir.includes('n')) { 
+                newHeight = Math.max(200, startRect.height - dy); 
+                newTop = Math.max(0, (startRect.top - containerRect.top) + dy);
+              }
+              
+              // Apply changes immediately
+              card.style.width = `${newWidth}px`;
+              card.style.height = `${newHeight}px`;
+              card.style.left = `${newLeft}px`;
+              card.style.top = `${newTop}px`;
+            }
+            
+            function onUp() {
+              document.removeEventListener('pointermove', onMove);
+              document.removeEventListener('pointerup', onUp);
+              
+              // Save the final state
+              const spec = getCurrentCardSpec(cardId);
+              if (spec) {
+                saveLayoutForCard(cardId, spec);
+                updateIsolatedLayout();
+              }
+            }
+            
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onUp);
+          });
+        });
+      }
+      
+      // Initialize all cards for isolated positioning when first interaction happens
+      function initializeAllCardsForIsolation() {
+        const container = document.getElementById('answers');
+        if (!container) return;
+        // Only initialize if not already in isolated mode
+        if (container.classList.contains('isolated')) return;
+
+        const allCards = ['card-model1', 'card-model2', 'card-model3'];
+        // Capture rectangles BEFORE changing layout
+        const preRects = {};
+        allCards.forEach((cardId) => {
+          const card = document.getElementById(cardId);
+          if (!card) return;
+          preRects[cardId] = card.getBoundingClientRect();
+        });
+
+        // Switch to isolated layout
+        container.classList.add('isolated');
+        // Rect after layout change (for relative offsets)
+        const containerRect = container.getBoundingClientRect();
+
+        // Apply absolute positions using the pre-change rectangles
+        allCards.forEach((cardId, index) => {
+          const card = document.getElementById(cardId);
+          const rect = preRects[cardId];
+          if (!card || !rect) return;
+          card.style.position = 'absolute';
+          card.style.left = `${Math.max(0, Math.round(rect.left - containerRect.left))}px`;
+          card.style.top = `${Math.max(0, Math.round(rect.top - containerRect.top))}px`;
+          card.style.width = `${Math.round(rect.width)}px`;
+          card.style.height = `${Math.round(rect.height)}px`;
+          // preserve existing z-index if any, else assign stacking by order
+          if (!card.style.zIndex) card.style.zIndex = String(index + 1);
+        });
+      }
+      
+      // Initialize a single card for isolated positioning (legacy function)
+      function initializeIsolatedCard(cardId) {
+        initializeAllCardsForIsolation();
+      }
+      
+      // Update isolated layout container height
+      function updateIsolatedLayout() {
+        const container = document.getElementById('answers');
+        if (!container || !container.classList.contains('isolated')) return;
+        
+        const cards = ['card-model1','card-model2','card-model3']
+          .map((id) => document.getElementById(id))
+          .filter(Boolean);
+        
+        let maxBottom = 500; // minimum height
+        cards.forEach((card) => {
+          const top = parseFloat(card.style.top) || 0;
+          const height = parseFloat(card.style.height) || 200;
+          const bottom = top + height;
+          if (bottom > maxBottom) maxBottom = bottom;
+        });
+        
+        container.style.minHeight = `${Math.ceil(maxBottom + 20)}px`;
+      }
+
       ['card-model1','card-model2','card-model3'].forEach(makeDraggable);
+      ['card-model1','card-model2','card-model3'].forEach(makeResizable);
       async function ask() {
+        console.log('Frontend: Before ask(), window.__histories:', window.__histories);
         const enabledModels = ['model1','model2','model3'].filter(m => el(`enable-${m}`).checked && el(`model-${m.slice(-1)}`).value);
         if (enabledModels.length === 0) return;
 
@@ -673,6 +1300,7 @@
                 prompt: promptText,
                 system: withBriefReasoning((adv[provider]?.system ?? adv.system) ?? '', modelValue, showReasoning),
                 histories: window.__histories,
+                modelId,
                 providers: { [provider]: true },
                 models: { [provider]: modelValue },
                 temperature: (adv[provider]?.temperature ?? adv.temperature) ?? 0.2,
@@ -682,16 +1310,24 @@
             });
             const data = await res.json();
             const r = data[provider];
+            console.log(`Frontend: ${modelId} response:`, r);
             if (r?.ok) {
               const box = out[modelId];
               const u = document.createElement('div'); u.className = 'msg user'; u.textContent = promptText;
               const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = r.text || '';
-              box.appendChild(u); box.appendChild(a); box.scrollTop = box.scrollHeight; box.dataset.empty = 'false';
-              document.getElementById('lat-' + modelId).textContent = `${r.latencyMs} ms`;
+              box.appendChild(u); box.appendChild(a); box.dataset.empty = 'false';
+              
+              // Smart scroll for "Ask all": show question + start of answer
+              if (box.children.length > 2) {
+                u.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else {
+                box.scrollTop = box.scrollHeight;
+              }
               window.__histories[modelId].push(
                 { role: 'user', content: promptText },
                 { role: 'assistant', content: r.text || '' }
               );
+              console.log(`Frontend: Added to ${modelId} history, now ${window.__histories[modelId].length} items`);
             } else {
               const box = out[modelId];
               const errDiv = document.createElement('div');
@@ -699,7 +1335,6 @@
               errDiv.textContent = r?.error || 'Error';
               box.appendChild(errDiv);
               box.dataset.empty = 'false';
-              document.getElementById('lat-' + modelId).textContent = '';
             }
           } catch (err) {
             console.error(`Error with ${modelId}:`, err);
@@ -743,6 +1378,7 @@
           maxTokens: (adv.openai?.maxTokens ?? adv.maxTokens),
           maxCompletionTokens: (adv.openai?.max_completion_tokens ?? adv.max_completion_tokens) ?? 1024,
           histories: window.__histories,
+          modelId: 'model1',
         };
         const res = await fetch('/api/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         if (!res.body) return ask();
@@ -754,6 +1390,11 @@
         const promptText = el('prompt').value;
         const u = document.createElement('div'); u.className = 'msg user'; u.textContent = promptText; box.appendChild(u);
         const a = document.createElement('div'); a.className = 'msg assistant'; box.appendChild(a);
+        
+        // Position view to show question + start of streaming answer
+        if (box.children.length > 2) {
+          u.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
 
         let accumulated = '';
         let buffer = '';
@@ -772,10 +1413,10 @@
                 if (msg.delta) { 
                   accumulated += msg.delta;
                   a.textContent = accumulated; 
-                  box.scrollTop = box.scrollHeight; 
+                  // Don't auto-scroll during streaming - let user read from context
                 }
                 if (msg.done) { 
-                  document.getElementById('lat-model1').textContent = `${msg.latencyMs} ms`;
+                  
                   // Add to conversation history
                   window.__histories.model1.push(
                     { role: 'user', content: promptText },
@@ -864,10 +1505,12 @@
         const showReasoning = el('show-reasoning').checked;
         try {
           const adv = parseAdvanced();
+          console.log(`Frontend: Before request, ${modelId} history has ${window.__histories[modelId]?.length || 0} items`);
           const body = {
             prompt: usePrompt,
             system: withBriefReasoning((adv[provider]?.system ?? adv.system) ?? '', modelValue, showReasoning),
             histories: window.__histories,
+            modelId,
             providers: {
               [provider]: true,
             },
@@ -891,15 +1534,31 @@
             const box = out[modelId];
             const u = document.createElement('div'); u.className = 'msg user'; u.textContent = usePrompt;
             const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = r.text || '';
-            box.appendChild(u); box.appendChild(a); box.scrollTop = box.scrollHeight; box.dataset.empty = 'false';
-            document.getElementById('lat-' + modelId).textContent = `${r.latencyMs} ms`;
+              box.appendChild(u); box.appendChild(a); box.dataset.empty = 'false';
+              
+              // Clear follow-up input if it was used
+              if (followText && followInput) followInput.value = '';
+              
+              // Smart scroll: show some context + new question + start of answer
+              if (box.children.length > 2) {
+                // Scroll to show the new question (not the very bottom)
+                u.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else {
+                // First conversation, normal scroll
+                box.scrollTop = box.scrollHeight;
+              }
+              
+            const latEl = document.getElementById('lat-' + modelId);
+            if (latEl) latEl.textContent = `${r.latencyMs} ms`;
             window.__histories[modelId].push(
               { role: 'user', content: usePrompt },
               { role: 'assistant', content: r.text || '' }
             );
+            console.log(`Frontend: After adding to ${modelId} history, now ${window.__histories[modelId].length} items`);
           } else {
             out[modelId].innerHTML = '<span class="error">' + (r?.error || 'Error') + '</span>';
-            document.getElementById('lat-' + modelId).textContent = '';
+            const latEl = document.getElementById('lat-' + modelId);
+            if (latEl) latEl.textContent = '';
           }
         } catch (err) {
           console.error(`Error in askSingle(${modelId}):`, err);
@@ -918,6 +1577,7 @@
 
       // Clear functions
       function clearConversation(modelId) {
+        console.log(`Frontend: clearConversation called for ${modelId}`, new Error().stack);
         const box = out[modelId];
         if (box) {
           box.textContent = '';
@@ -935,6 +1595,8 @@
       }
       const resetAllBtn = document.getElementById('resetAllBtn');
       if (resetAllBtn) resetAllBtn.addEventListener('click', clearAllConversations);
+      const resetLayoutBtn = document.getElementById('resetLayoutBtn');
+      if (resetLayoutBtn) resetLayoutBtn.addEventListener('click', () => { clearSavedLayout(); clearSavedColumns(); });
       const clear1 = document.getElementById('clear-model1');
       const clear2 = document.getElementById('clear-model2');
       const clear3 = document.getElementById('clear-model3');
@@ -953,6 +1615,32 @@
       document.getElementById('dot-restore-model1').addEventListener('click', restoreAll);
       document.getElementById('dot-restore-model2').addEventListener('click', restoreAll);
       document.getElementById('dot-restore-model3').addEventListener('click', restoreAll);
+      // Taller/Shorter buttons (keep width, adjust height)
+      function taller(modelId) {
+        const card = document.getElementById('card-' + modelId);
+        if (!card) return;
+        const currentHeight = parseFloat(card.style.height) || card.getBoundingClientRect().height;
+        card.style.height = Math.round(currentHeight + 200) + 'px';
+        const spec = getCurrentCardSpec('card-' + modelId);
+        if (spec) saveLayoutForCard('card-' + modelId, spec);
+        updateIsolatedLayout();
+      }
+      function shorter(modelId) {
+        const card = document.getElementById('card-' + modelId);
+        if (!card) return;
+        const currentHeight = parseFloat(card.style.height) || card.getBoundingClientRect().height;
+        const next = Math.max(220, currentHeight - 200);
+        card.style.height = Math.round(next) + 'px';
+        const spec = getCurrentCardSpec('card-' + modelId);
+        if (spec) saveLayoutForCard('card-' + modelId, spec);
+        updateIsolatedLayout();
+      }
+      document.getElementById('dot-tall-model1').addEventListener('click', () => taller('model1'));
+      document.getElementById('dot-tall-model2').addEventListener('click', () => taller('model2'));
+      document.getElementById('dot-tall-model3').addEventListener('click', () => taller('model3'));
+      document.getElementById('dot-short-model1').addEventListener('click', () => shorter('model1'));
+      document.getElementById('dot-short-model2').addEventListener('click', () => shorter('model2'));
+      document.getElementById('dot-short-model3').addEventListener('click', () => shorter('model3'));
     </script>
   </body>
   </html>

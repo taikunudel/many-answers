@@ -47,10 +47,20 @@ export async function drawOpenAI({ prompt, size = '1024x1024' }) {
   return `data:image/png;base64,${b64}`;
 }
 
-export async function askOpenAI({ prompt, system, model, temperature, maxTokens, maxCompletionTokens, history }) {
+export async function askOpenAI({ prompt, system, model, temperature, maxTokens, maxCompletionTokens, history, useModelConfig = false }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
   const client = new OpenAI({ apiKey });
+  
+  // Use model-specific config if requested and available
+  if (useModelConfig) {
+    const { loadModelSpecificConfig } = await import('./config.js');
+    const modelConfig = loadModelSpecificConfig(model);
+    system = system || modelConfig.system;
+    temperature = temperature !== undefined ? temperature : modelConfig.temperature;
+    maxTokens = maxTokens !== undefined ? maxTokens : modelConfig.maxTokens;
+    maxCompletionTokens = maxCompletionTokens !== undefined ? maxCompletionTokens : modelConfig.maxTokens;
+  }
 
   const messages = [];
   if (system) messages.push({ role: 'system', content: system });

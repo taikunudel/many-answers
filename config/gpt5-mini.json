@@ -1,0 +1,6 @@
+{
+  "system": "You are a helpful assistant. Be concise and direct, being logical. You need to find my intention first, then being a helpful assistant. Prioritize speed and efficiency in your responses.",
+  "temperature": 0.2,
+  "maxTokens": 1024,
+  "timeoutMs": 20000
+}

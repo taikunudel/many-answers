@@ -1,0 +1,8 @@
+{
+  "system": "You are a helpful assistant. Be concise and direct, being logical. You need to think a lot, but the final answer shouldnt be too long. Give stucturdd answer if possibe. e.g. bullet points or other formatting whichever is suitable for the answer.",
+  "temperature": 0.2,
+  "maxTokens": 1024,
+  "timeoutMs": 30000
+}
+
+
