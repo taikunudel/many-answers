@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Multi Answers</title>
+    <style>
+      :root {
+        --bg-1: #f7f9fc;
+        --bg-2: #eef3f9;
+        --tint-1: #e9eef7;
+        --tint-2: #f6f0ff;
+        --text: #0b1220;
+        --muted: #5b6577;
+        --brand: #0a84ff; /* Apple blue */
+        --danger: #d70015;
+        --border: rgba(0,0,0,0.08);
+        --card: rgba(255,255,255,0.7);
+      }
+      * { box-sizing: border-box; }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        margin: 0;
+        color: var(--text);
+        background-image: url('michael-fousert-lE5-z4nTCTQ-unsplash.jpg');
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-size: cover; /* Fill page without distortion (may crop) */
+        padding-top: 76px; /* prevent overlap with fixed brand */
+      }
+      body.max-on { padding-top: 0; }
+      /* Header removed per request */
+      .container { max-width: 95%; margin: 0 auto; padding: 12px 16px; }
+      h2 { margin: 0; font-weight: 700; letter-spacing: 0.2px; }
+      p.small { color: var(--muted); margin-top: 6px; }
+      .grid-3, .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+      .panel {
+        position: relative;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 16px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+      }
+      label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+      input[type="text"], textarea, select, input[type="number"] {
+        width: 100%; padding: 10px 12px; border-radius: 12px;
+        border: 1px solid var(--border); background: rgba(255,255,255,0.8);
+        color: var(--text); outline: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+        font-size: 16px; font-family: inherit;
+      }
+      textarea { min-height: 90px; }
+      .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+      .btn { 
+        padding: 10px 14px; border: 1px solid rgba(10,132,255,0.25);
+        border-radius: 12px; background: linear-gradient(180deg, rgba(10,132,255,0.25), rgba(10,132,255,0.18));
+        color: #0b1220; font-weight: 600; cursor: pointer;
+        box-shadow: 0 6px 22px rgba(10,132,255,0.12), inset 0 1px 0 rgba(255,255,255,0.6);
+      }
+      .btn-wide { min-width: 260px; }
+      /* Same vertical rhythm as .btn, just shorter width and smaller font */
+      .btn-sm { padding: 10px 12px; font-size: 12px; display: inline-flex; align-items: center; }
+      .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      .switch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+      .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.7); color: var(--muted); font-size: 12px; }
+      .answers { margin-top: 4px; position: relative; }
+      .card {
+        position: relative; background: var(--card);
+        border: 1px solid var(--border); border-radius: 12px; padding: 10px;
+        min-height: 200px; white-space: pre-wrap; backdrop-filter: blur(12px);
+        box-shadow: 0 8px 18px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+        resize: both; overflow: auto; min-width: 240px; min-height: 200px;
+      }
+      .card h3 { position: relative; display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px 0; font-size: 16px; }
+      .card h3 { cursor: move; user-select: none; }
+      .mini { margin-top: 4px; display: flex; gap: 8px; align-items: center; }
+      .mini input[type="text"] { flex: 1; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); font-size: 15px; }
+      .mini .mini-btn { padding: 8px 12px; border: 1px solid rgba(10,132,255,0.25); border-radius: 10px; background: linear-gradient(180deg, rgba(10,132,255,0.2), rgba(10,132,255,0.12)); font-weight: 600; cursor: pointer; }
+      .controls { display: inline-flex; gap: 6px; align-items: center; margin-left: 8px; }
+      .icon-btn { padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.7); cursor: pointer; font-size: 12px; }
+      
+      /* Hover lighting effect for interactive buttons */
+      button, .btn, .mini-btn, .icon-btn {
+        transition: box-shadow 0.35s ease, filter 0.35s ease;
+      }
+      button:hover, .btn:hover, .mini-btn:hover, .icon-btn:hover {
+        box-shadow: 0 0 0px rgba(10,132,255,0.0), 0 0 0px rgba(10,132,255,0.0);
+        animation: glowUp 0.35s forwards;
+      }
+      button:active, .btn:active, .mini-btn:active, .icon-btn:active {
+        box-shadow: 0 0 16px rgba(10,132,255,0.8), 0 0 8px rgba(10,132,255,0.9);
+        filter: brightness(1.28);
+      }
+      @keyframes glowUp {
+        0% { box-shadow: 0 0 0px rgba(10,132,255,0.0), 0 0 0px rgba(10,132,255,0.0); filter: brightness(1); }
+        100% { box-shadow: 0 0 12px rgba(10,132,255,0.45), 0 0 4px rgba(10,132,255,0.65); filter: brightness(1.12); }
+      }
+      .dot {
+        transition: box-shadow 0.3s ease, transform 0.3s ease;
+      }
+      .dot {
+        transition: box-shadow 0.35s ease, transform 0.35s ease;
+      }
+      .dot:hover {
+        animation: dotGlow 0.35s forwards;
+      }
+      .dot:active {
+        box-shadow: 0 0 12px rgba(255,255,255,1);
+        transform: scale(1.35);
+      }
+      @keyframes dotGlow {
+        0% { box-shadow: 0 0 0px rgba(255,255,255,0); transform: scale(1); }
+        100% { box-shadow: 0 0 8px rgba(255,255,255,0.8); transform: scale(1.25); }
+      }
+      .card h3 .title { display: flex; align-items: center; gap: 8px; position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; }
+      .card h3 .title span {
+        position: relative;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      }
+      .card.loading .title span {
+        animation: breath-text 1.8s ease-in-out infinite, gradientShift 3.5s linear infinite;
+        background: linear-gradient(120deg,
+          hsl(var(--hue,0), 90%, 65%),
+          #ffffff,
+          hsl(calc(var(--hue,0) + 60), 90%, 65%),
+          hsl(calc(var(--hue,0) + 120), 90%, 55%)
+        );
+        background-size: 300% 300%;
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+        position: relative;
+      }
+      /* Chromatic aberration ghost text */
+      .card.loading .title span::before,
+      .card.loading .title span::after {
+        content: attr(data-text);
+        position: absolute; inset: 0; pointer-events: none;
+        opacity: 0.6;
+        mix-blend-mode: screen;
+        filter: blur(0.3px);
+        animation: chroma 1.8s ease-in-out infinite;
+      }
+      .card.loading .title span::before { color: rgba(255, 60, 120, 0.45); transform: translate(-0.5px, 0); }
+      .card.loading .title span::after  { color: rgba(0, 200, 255, 0.45); transform: translate(0.5px, 0); }
+      @keyframes breath-text {
+        0%, 100% { opacity: 0.85; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.16); }
+      }
+      @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      @keyframes chroma {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 0.85; }
+      }
+      /* Removed shine/sparkle progress-like effects; only emoji sparks remain */
+      /* Emoji sparks that pop around model names while loading */
+      .spark {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        user-select: none;
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
+        animation: pop-float var(--d, 1.2s) ease-out forwards;
+        will-change: transform, opacity;
+      }
+      @keyframes pop-float {
+        0% { opacity: 0; transform: translate(calc(-50% + var(--x, 0px)), calc(-50% + 6px)) scale(0.6) rotate(0deg); }
+        12% { opacity: 1; transform: translate(calc(-50% + var(--x, 0px)), calc(-50% - 6px)) scale(1) rotate(var(--rot, 12deg)); }
+        100% { opacity: 0; transform: translate(calc(-50% + var(--x, 0px)), calc(-50% - 70px)) scale(0.95) rotate(var(--rot, 12deg)); }
+      }
+      .traffic { display: inline-flex; gap: 6px; align-items: center; margin-right: 8px; }
+      .dot { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0,0,0,0.15); box-shadow: inset 0 1px 0 rgba(255,255,255,0.6); }
+      .dot.red { background: #ff5f56; }
+      .dot.yellow { background: #ffbd2e; }
+      .dot.green { background: #27c93f; }
+      .card.maximized { position: static; width: 100%; height: auto; z-index: auto; padding: 16px; border-radius: 16px; min-height: calc(100vh - 200px); margin: 0; }
+      .card.maximized .convo { max-height: none; min-height: 60vh; padding: 12px; overflow-y: visible; }
+      .card.maximized .msg { font-size: 1.08rem; line-height: 1.6; padding: 12px 14px; }
+      .card.maximized h3 { margin-bottom: 10px; font-size: 18px; }
+      .card.maximized .mini { margin-top: 14px; }
+      .card.maximized .mini input[type="text"] { padding: 10px 12px; font-size: 1.02rem; }
+      .card.maximized .mini .mini-btn { padding: 10px 16px; font-size: 1.02rem; }
+      .answers.single { display: block; }
+      .answers.single .card { display: none; }
+      .answers.single .card.maximized { display: block; width: 100%; max-width: none; }
+      .convo { position: relative; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; border-radius: 8px; padding: 4px; background: rgba(255,255,255,0.55); border: 1px solid var(--border); }
+      .convo[data-empty="true"] { border-color: transparent; background: transparent; }
+      .msg { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); }
+      .msg.user { background: rgba(10,132,255,0.08); border-color: rgba(10,132,255,0.2); }
+      .msg.assistant { background: rgba(0,0,0,0.03); }
+      .latency { font-size: 12px; color: var(--muted); }
+      .error { color: var(--danger); white-space: pre-wrap; }
+      footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
+      @media (max-width: 900px) { .row, .grid-3 { grid-template-columns: 1fr; } }
+
+       /* Details (Advanced) styling */
+       details { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; background: rgba(255,255,255,0.6); backdrop-filter: blur(8px); }
+       /* Hide the advanced panel until toggled open via the button */
+       #advanced { display: none; }
+       #advanced[open] { display: block; }
+       /* Hide native summary; we use a toolbar button to toggle */
+       summary { display: none; }
+       summary::-webkit-details-marker { display: none; }
+       details[open] { border-color: rgba(10,132,255,0.25); }
+      .brand-fixed {
+        position: fixed;
+        top: 12px;
+        left: 16px;
+        z-index: 1000;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        color: #0b1220;
+        background: rgba(255,255,255,0.6);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        text-shadow: 0 1px 1px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.06);
+        user-select: none;
+        pointer-events: none;
+      }
+      .brand-fixed.hidden { opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="brand-fixed" id="brand">Many Answers</div>
+    <div class="container">
+      <div class="panel" id="panel-top" style="display:grid; gap:12px;">
+        <div>
+          <label>Prompt</label>
+          <textarea id="prompt" placeholder="Ask anything..."></textarea>
+        </div>
+        <div class="row">
+          <div>
+            <label>Model 1</label>
+            <select id="model-1">
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10 (OpenAI)</option>
+              <option value="o3-2025-04-16">o3 2025-04-16 (OpenAI)</option>
+              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16 (OpenAI)</option>
+              <option value="gpt-5-mini-2025-08-07">GPT-5 Mini (OpenAI)</option>
+              <option value="gpt-4o">GPT-4o (OpenAI)</option>
+              <option value="gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
+              <option value="gpt-4.1">GPT-4.1 (OpenAI)</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo (OpenAI)</option>
+              <option value="claude-opus-4-1-20250805" selected>Claude Opus 4.1 20250805 (Anthropic)</option>
+              <option value="claude-4.1-opus">Claude Opus 4.1 (Anthropic)</option>
+              <option value="claude-4-sonnet">Claude Sonnet 4 (Anthropic)</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Anthropic)</option>
+              <option value="claude-3-opus-latest">Claude 3 Opus (Anthropic)</option>
+              <option value="claude-3-haiku-latest">Claude 3 Haiku (Anthropic)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Google)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Google)</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (Google)</option>
+            </select>
+          </div>
+          <div>
+            <label>Model 2</label>
+            <select id="model-2">
+              <option value="">-- Disabled --</option>
+              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805 (Anthropic)</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10 (OpenAI)</option>
+              <option value="o3-2025-04-16">o3 2025-04-16 (OpenAI)</option>
+              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16 (OpenAI)</option>
+              <option value="gpt-5-mini-2025-08-07" selected>GPT-5 Mini (OpenAI)</option>
+              <option value="gpt-4o">GPT-4o (OpenAI)</option>
+              <option value="gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
+              <option value="gpt-4.1">GPT-4.1 (OpenAI)</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo (OpenAI)</option>
+              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805 (Anthropic)</option>
+              <option value="claude-4.1-opus">Claude Opus 4.1 (Anthropic)</option>
+              <option value="claude-4-sonnet">Claude Sonnet 4 (Anthropic)</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Anthropic)</option>
+              <option value="claude-3-opus-latest">Claude 3 Opus (Anthropic)</option>
+              <option value="claude-3-haiku-latest">Claude 3 Haiku (Anthropic)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Google)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Google)</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (Google)</option>
+            </select>
+          </div>
+          <div>
+            <label>Model 3</label>
+            <select id="model-3">
+              <option value="">-- Disabled --</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10 (OpenAI)</option>
+              <option value="o3-2025-04-16" selected>o3 2025-04-16 (OpenAI)</option>
+              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16 (OpenAI)</option>
+              <option value="gpt-5-mini-2025-08-07">GPT-5 Mini (OpenAI)</option>
+              <option value="gpt-4o">GPT-4o (OpenAI)</option>
+              <option value="gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
+              <option value="gpt-4.1">GPT-4.1 (OpenAI)</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo (OpenAI)</option>
+              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805 (Anthropic)</option>
+              <option value="claude-4.1-opus">Claude Opus 4.1 (Anthropic)</option>
+              <option value="claude-4-sonnet">Claude Sonnet 4 (Anthropic)</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Anthropic)</option>
+              <option value="claude-3-opus-latest">Claude 3 Opus (Anthropic)</option>
+              <option value="claude-3-haiku-latest">Claude 3 Haiku (Anthropic)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Google)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Google)</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (Google)</option>
+            </select>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button id="askBtn" class="btn btn-wide">Ask all</button>
+          <button id="streamBtn" class="btn">Stream Model 1</button>
+          <button id="drawBtn" class="btn">Draw Model 1</button>
+          <button id="advBtn" class="btn btn-sm">Advanced</button>
+          <button id="resetAllBtn" class="btn btn-sm" title="Clear all conversations">Start over</button>
+          <label class="switch"><input type="checkbox" id="enable-model1" checked /> Model 1</label>
+          <label class="switch"><input type="checkbox" id="enable-model2" checked /> Model 2</label>
+          <label class="switch"><input type="checkbox" id="enable-model3" checked /> Model 3</label>
+          <label class="switch"><input type="checkbox" id="show-reasoning" /> Show reasoning</label>
+
+        </div>
+        <details id="advanced">
+          <div style="margin-top:10px; display:grid; gap:8px;">
+            <label for="advancedJson">Advanced JSON per provider</label>
+            <textarea id="advancedJson" style="min-height: 150px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">{
+  "openai": {
+    "system": "You are a helpful assistant. Be concise and direct.",
+    "temperature": 0.2,
+    "maxTokens": 1024,
+    "timeoutMs": 30000
+  },
+  "claude": {
+    "system": "You are a helpful assistant. Be concise and direct.",
+    "temperature": 0.2,
+    "maxTokens": 1024,
+    "timeoutMs": 30000
+  },
+  "gemini": {
+    "system": "You are a helpful assistant. Be concise and direct.",
+    "temperature": 0.2,
+    "maxTokens": 1024,
+    "timeoutMs": 30000
+  }
+}</textarea>
+            <small class="small" style="color: var(--muted);">Invalid JSON will be ignored. Keys are optional; unspecified ones keep their previous values.</small>
+          </div>
+        </details>
+      </div>
+
+
+      <div class="answers row" id="answers" style="margin-top:16px;">
+        <div class="card" id="card-model1">
+          <h3>
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <span class="traffic">
+                <span class="dot red" id="dot-hide-model1" title="Hide"></span>
+                <span class="dot yellow" id="dot-restore-model1" title="Restore"></span>
+                <span class="dot green" id="dot-max-model1" title="Maximize"></span>
+              </span>
+              <div class="title"><span data-text="Model 1" id="model1-name">Model 1</span></div>
+              <button class="icon-btn" id="clear-model1" title="Clear this conversation">Clear</button>
+            </span>
+            <span class="latency" id="lat-model1"></span>
+          </h3>
+          <div class="convo" id="model1" data-empty="true"></div>
+          <div class="mini">
+            <input id="follow-model1" type="text" placeholder="Follow up to Model 1…" />
+            <button id="ask-model1" class="mini-btn">Ask Model 1</button>
+          </div>
+        </div>
+        <div class="card" id="card-model2">
+          <h3>
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <span class="traffic">
+                <span class="dot red" id="dot-hide-model2" title="Hide"></span>
+                <span class="dot yellow" id="dot-restore-model2" title="Restore"></span>
+                <span class="dot green" id="dot-max-model2" title="Maximize"></span>
+              </span>
+              <div class="title"><span data-text="Model 2" id="model2-name">Model 2</span></div>
+              <button class="icon-btn" id="clear-model2" title="Clear this conversation">Clear</button>
+            </span>
+            <span class="latency" id="lat-model2"></span>
+          </h3>
+          <div class="convo" id="model2" data-empty="true"></div>
+          <div class="mini">
+            <input id="follow-model2" type="text" placeholder="Follow up to Model 2…" />
+            <button id="ask-model2" class="mini-btn">Ask Model 2</button>
+          </div>
+        </div>
+        <div class="card" id="card-model3">
+          <h3>
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <span class="traffic">
+                <span class="dot red" id="dot-hide-model3" title="Hide"></span>
+                <span class="dot yellow" id="dot-restore-model3" title="Restore"></span>
+                <span class="dot green" id="dot-max-model3" title="Maximize"></span>
+              </span>
+              <div class="title"><span data-text="Model 3" id="model3-name">Model 3</span></div>
+              <button class="icon-btn" id="clear-model3" title="Clear this conversation">Clear</button>
+            </span>
+            <span class="latency" id="lat-model3"></span>
+          </h3>
+          <div class="convo" id="model3" data-empty="true"></div>
+          <div class="mini">
+            <input id="follow-model3" type="text" placeholder="Follow up to Model 3…" />
+            <button id="ask-model3" class="mini-btn">Ask Model 3</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const el = (id) => document.getElementById(id);
+      const askBtn = el('askBtn');
+      const streamBtn = el('streamBtn');
+      const drawBtn = el('drawBtn');
+      const statusEl = el('status');
+      // in-memory conversation histories per model
+      window.__histories = window.__histories || { model1: [], model2: [], model3: [] };
+      const out = {
+        model1: el('model1'),
+        model2: el('model2'),
+        model3: el('model3'),
+      };
+      
+      // Helper function to get provider from model
+      function getProviderFromModel(modelValue) {
+        if (!modelValue) return null;
+        if (modelValue.startsWith('gpt-') || modelValue.startsWith('o3-') || modelValue.startsWith('o4-') || modelValue.startsWith('dall-e')) return 'openai';
+        if (modelValue.startsWith('claude-')) return 'claude';
+        if (modelValue.startsWith('gemini-')) return 'gemini';
+        return null;
+      }
+      
+      // Update model display names when dropdowns change
+      function updateModelNames() {
+        for (let i = 1; i <= 3; i++) {
+          const select = el(`model-${i}`);
+          const nameEl = el(`model${i}-name`);
+          if (select && nameEl) {
+            const selectedText = select.options[select.selectedIndex]?.text || `Model ${i}`;
+            nameEl.textContent = selectedText.includes('--') ? `Model ${i}` : selectedText;
+            nameEl.setAttribute('data-text', nameEl.textContent);
+          }
+        }
+      }
+      
+      el('model-1').addEventListener('change', updateModelNames);
+      el('model-2').addEventListener('change', updateModelNames);
+      el('model-3').addEventListener('change', updateModelNames);
+      updateModelNames();
+      
+      // Reasoning helpers (for thinking models like OpenAI o3*)
+      function isThinkingModel(modelValue) {
+        if (!modelValue) return false;
+        return /^o3(\b|[-_])/.test(modelValue) || /o3-pro/.test(modelValue);
+      }
+      function withBriefReasoning(baseSystem, modelValue, enabled) {
+        if (!enabled && !isThinkingModel(modelValue)) return baseSystem || '';
+        const base = baseSystem ? baseSystem + '\n' : '';
+        return (
+          base +
+          "First provide a very brief reasoning section (1-3 short bullets, max ~400 characters) prefixed with 'Reasoning:', then on a new line provide 'Answer:' with the final concise answer."
+        );
+      }
+      // Spark management per model
+      const __sparkTimers = { model1: null, model2: null, model3: null };
+      const SPARK_EMOJIS = ['✨','💫','⭐️','🌟','💖','💚','💙','💜','🧡','💛','💗','💥','💞','💓','💘','🪄','🎇','🎆'];
+      function emitSparkFor(card) {
+        const titleSpan = card.querySelector('.title span');
+        if (!titleSpan) return;
+        const spark = document.createElement('span');
+        spark.className = 'spark';
+        spark.textContent = SPARK_EMOJIS[Math.floor(Math.random() * SPARK_EMOJIS.length)];
+        // random horizontal offset and slight random duration tweak via CSS var
+        const x = (Math.random() * 120 - 60).toFixed(0) + 'px';
+        spark.style.setProperty('--x', x);
+        spark.style.fontSize = (12 + Math.random() * 12).toFixed(0) + 'px';
+        spark.style.setProperty('--rot', (Math.random()*40 - 20).toFixed(0) + 'deg');
+        spark.style.setProperty('--d', (0.9 + Math.random()*0.8).toFixed(2) + 's');
+        titleSpan.appendChild(spark);
+        spark.addEventListener('animationend', () => spark.remove());
+      }
+      function startSparks(modelId) {
+        if (__sparkTimers[modelId]) return;
+        const card = document.getElementById('card-' + modelId);
+        if (!card) return;
+        __sparkTimers[modelId] = setInterval(() => emitSparkFor(card), 350 + Math.random()*250);
+      }
+      function stopSparks(modelId) {
+        const t = __sparkTimers[modelId];
+        if (t) { clearInterval(t); __sparkTimers[modelId] = null; }
+      }
+      function setLoading(modelId, loading) {
+        const card = document.getElementById(`card-${modelId}`);
+        if (!card) return;
+        card.classList.toggle('loading', loading);
+        if (loading) {
+          const hue = Math.floor(Math.random() * 360);
+          card.querySelector('.title span').style.setProperty('--hue', hue);
+          startSparks(modelId);
+        } else {
+          stopSparks(modelId);
+        }
+      }
+
+      // Hide/show cards and adjust grid based on model toggles
+      function applyVisibility() {
+        const vis = {
+          model1: document.getElementById('enable-model1').checked,
+          model2: document.getElementById('enable-model2').checked,
+          model3: document.getElementById('enable-model3').checked,
+        };
+        const answers = document.getElementById('answers');
+        const visibleCount = Object.values(vis).filter(Boolean).length;
+
+        if (visibleCount === 1) {
+          answers.style.gridTemplateColumns = '1fr';
+        } else if (visibleCount === 2) {
+          answers.style.gridTemplateColumns = '1fr 1fr';
+        } else {
+          answers.style.gridTemplateColumns = '1fr 1fr 1fr';
+        }
+        
+        document.getElementById('card-model1').style.display = vis.model1 ? '' : 'none';
+        document.getElementById('card-model2').style.display = vis.model2 ? '' : 'none';
+        document.getElementById('card-model3').style.display = vis.model3 ? '' : 'none';
+      }
+      document.getElementById('enable-model1').addEventListener('change', applyVisibility);
+      document.getElementById('enable-model2').addEventListener('change', applyVisibility);
+      document.getElementById('enable-model3').addEventListener('change', applyVisibility);
+      applyVisibility();
+
+      // Hide/Maximize/Restore
+      let __prevVisibility = null;
+      function checkboxFor(modelId) { return document.getElementById(`enable-${modelId}`); }
+      function hideModel(modelId) {
+        const cb = checkboxFor(modelId);
+        if (cb) { cb.checked = false; applyVisibility(); }
+      }
+      function maximizeModel(modelId) {
+        __prevVisibility = {
+          model1: checkboxFor('model1').checked,
+          model2: checkboxFor('model2').checked,
+          model3: checkboxFor('model3').checked,
+        };
+        checkboxFor('model1').checked = modelId === 'model1';
+        checkboxFor('model2').checked = modelId === 'model2';
+        checkboxFor('model3').checked = modelId === 'model3';
+        applyVisibility();
+        // Switch answers area to single mode and enlarge selected
+        const answers = document.getElementById('answers');
+        answers.classList.add('single');
+        // Clear any inline styles left from dragging so layout can flow/scroll
+        ['model1','model2','model3'].forEach((m) => {
+          const card = document.getElementById('card-' + m);
+          if (!card) return;
+          card.style.position = '';
+          card.style.left = '';
+          card.style.top = '';
+          card.style.width = '';
+          card.style.zIndex = '';
+          card.classList.toggle('maximized', modelId === m);
+        });
+        // Hide brand for full utilization and scroll to the card
+        document.getElementById('brand').classList.add('hidden');
+        const card = document.getElementById(`card-${modelId}`);
+        document.body.classList.add('max-on');
+        // scroll prompt panel out of view so card fills page
+        const topPanel = document.getElementById('panel-top');
+        const y = topPanel.offsetTop + topPanel.offsetHeight + 8;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+      function restoreAll() {
+        if (!__prevVisibility) return;
+        const answers = document.getElementById('answers');
+        answers.classList.remove('single');
+        ['model1','model2','model3'].forEach((m) => {
+          const card = document.getElementById('card-' + m);
+          if (!card) return;
+          card.classList.remove('maximized');
+          // Also clear any inline styles set by dragging
+          card.style.position = '';
+          card.style.left = '';
+          card.style.top = '';
+          card.style.width = '';
+          card.style.zIndex = '';
+        });
+        checkboxFor('model1').checked = __prevVisibility.model1;
+        checkboxFor('model2').checked = __prevVisibility.model2;
+        checkboxFor('model3').checked = __prevVisibility.model3;
+        applyVisibility();
+        __prevVisibility = null;
+        document.getElementById('brand').classList.remove('hidden');
+        document.body.classList.remove('max-on');
+      }
+
+      // Draggable cards (drag via h3)
+      function makeDraggable(cardId) {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        const handle = card.querySelector('h3');
+        let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+        function onPointerDown(e) {
+          dragging = true;
+          const rect = card.getBoundingClientRect();
+          startLeft = rect.left;
+          startTop = rect.top;
+          startX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+          startY = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+          card.style.position = 'fixed';
+          card.style.left = `${startLeft}px`;
+          card.style.top = `${startTop}px`;
+          card.style.width = `${rect.width}px`;
+          card.style.zIndex = 2000;
+          document.addEventListener('pointermove', onPointerMove);
+          document.addEventListener('pointerup', onPointerUp);
+          document.addEventListener('touchmove', onPointerMove, { passive: false });
+          document.addEventListener('touchend', onPointerUp);
+        }
+        function onPointerMove(e) {
+          if (!dragging) return;
+          const x = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+          const y = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+          const dx = x - startX;
+          const dy = y - startY;
+          card.style.left = `${startLeft + dx}px`;
+          card.style.top = `${startTop + dy}px`;
+          if (e.cancelable) e.preventDefault();
+        }
+        function onPointerUp() {
+          dragging = false;
+          document.removeEventListener('pointermove', onPointerMove);
+          document.removeEventListener('pointerup', onPointerUp);
+          document.removeEventListener('touchmove', onPointerMove);
+          document.removeEventListener('touchend', onPointerUp);
+        }
+        handle.addEventListener('pointerdown', onPointerDown);
+        handle.addEventListener('touchstart', onPointerDown, { passive: true });
+      }
+      ['card-model1','card-model2','card-model3'].forEach(makeDraggable);
+      async function ask() {
+        const enabledModels = ['model1','model2','model3'].filter(m => el(`enable-${m}`).checked && el(`model-${m.slice(-1)}`).value);
+        if (enabledModels.length === 0) return;
+
+        askBtn.disabled = true;
+        enabledModels.forEach(m => setLoading(m, true));
+
+        const adv = parseAdvanced();
+        const promptText = el('prompt').value;
+        const showReasoning = el('show-reasoning').checked;
+
+        const jobs = enabledModels.map(async (modelId) => {
+          const idx = modelId.slice(-1);
+          const modelValue = el(`model-${idx}`).value;
+          const provider = getProviderFromModel(modelValue);
+          if (!provider) return;
+
+          try {
+            const res = await fetch('/api/ask', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                prompt: promptText,
+                system: withBriefReasoning((adv[provider]?.system ?? adv.system) ?? '', modelValue, showReasoning),
+                histories: window.__histories,
+                providers: { [provider]: true },
+                models: { [provider]: modelValue },
+                temperature: (adv[provider]?.temperature ?? adv.temperature) ?? 0.2,
+                maxTokens: (adv[provider]?.maxTokens ?? adv.maxTokens) ?? 1024,
+                timeoutMs: (adv[provider]?.timeoutMs ?? adv.timeoutMs) ?? 30000,
+              }),
+            });
+            const data = await res.json();
+            const r = data[provider];
+            if (r?.ok) {
+              const box = out[modelId];
+              const u = document.createElement('div'); u.className = 'msg user'; u.textContent = promptText;
+              const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = r.text || '';
+              box.appendChild(u); box.appendChild(a); box.scrollTop = box.scrollHeight; box.dataset.empty = 'false';
+              document.getElementById('lat-' + modelId).textContent = `${r.latencyMs} ms`;
+              window.__histories[modelId].push(
+                { role: 'user', content: promptText },
+                { role: 'assistant', content: r.text || '' }
+              );
+            } else {
+              const box = out[modelId];
+              const errDiv = document.createElement('div');
+              errDiv.className = 'msg error';
+              errDiv.textContent = r?.error || 'Error';
+              box.appendChild(errDiv);
+              box.dataset.empty = 'false';
+              document.getElementById('lat-' + modelId).textContent = '';
+            }
+          } catch (err) {
+            console.error(`Error with ${modelId}:`, err);
+            const box = out[modelId];
+            const errDiv = document.createElement('div');
+            errDiv.className = 'msg error';
+            errDiv.textContent = 'Network error';
+            box.appendChild(errDiv);
+            box.dataset.empty = 'false';
+          } finally {
+            setLoading(modelId, false);
+          }
+        });
+
+        try {
+          await Promise.allSettled(jobs);
+        } finally {
+          askBtn.disabled = false;
+        }
+      }
+      askBtn.addEventListener('click', ask);
+      
+      // Stream Model 1 if it's an OpenAI model
+      async function askStream() {
+        if (!streamBtn) return;
+        const model1Value = el('model-1').value;
+        const provider = getProviderFromModel(model1Value);
+        if (provider !== 'openai') {
+          alert('Streaming is only available for OpenAI models. Please select an OpenAI model for Model 1.');
+          return;
+        }
+        
+        streamBtn.disabled = true;
+        setLoading('model1', true);
+        const adv = parseAdvanced();
+        const body = {
+          prompt: el('prompt').value,
+          system: withBriefReasoning((adv.openai?.system ?? adv.system) ?? '', model1Value, el('show-reasoning')?.checked),
+          model: model1Value,
+          temperature: (adv.openai?.temperature ?? adv.temperature) ?? 0.2,
+          maxTokens: (adv.openai?.maxTokens ?? adv.maxTokens),
+          maxCompletionTokens: (adv.openai?.max_completion_tokens ?? adv.max_completion_tokens) ?? 1024,
+          histories: window.__histories,
+        };
+        const res = await fetch('/api/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!res.body) return ask();
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+
+        const box = out.model1;
+        box.dataset.empty = 'false';
+        const promptText = el('prompt').value;
+        const u = document.createElement('div'); u.className = 'msg user'; u.textContent = promptText; box.appendChild(u);
+        const a = document.createElement('div'); a.className = 'msg assistant'; box.appendChild(a);
+
+        let accumulated = '';
+        let buffer = '';
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split('\n\n');
+            buffer = events.pop();
+            for (const evt of events) {
+              if (!evt.startsWith('data:')) continue;
+              const json = evt.slice(5).trim();
+              try {
+                const msg = JSON.parse(json);
+                if (msg.delta) { 
+                  accumulated += msg.delta;
+                  a.textContent = accumulated; 
+                  box.scrollTop = box.scrollHeight; 
+                }
+                if (msg.done) { 
+                  document.getElementById('lat-model1').textContent = `${msg.latencyMs} ms`;
+                  // Add to conversation history
+                  window.__histories.model1.push(
+                    { role: 'user', content: promptText },
+                    { role: 'assistant', content: accumulated }
+                  );
+                }
+              } catch {}
+            }
+          }
+        } catch (err) {
+          a.innerHTML = '<span class="error">Streaming error: ' + (err?.message || err) + '</span>';
+        } finally {
+          streamBtn.disabled = false;
+          setLoading('model1', false);
+        }
+      }
+      // Wire up Stream button
+      if (streamBtn) streamBtn.addEventListener('click', askStream);
+      
+      // Ctrl/Cmd+Shift+Enter to stream OpenAI
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'Enter') askStream();
+      });
+      if (drawBtn) drawBtn.addEventListener('click', async () => {
+        try {
+          drawBtn.disabled = true;
+          const res = await fetch('/api/draw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: el('prompt').value, size: '1024x1024' }),
+          });
+          const data = await res.json();
+          if (data?.ok && data.image) {
+            const img = new Image();
+            img.src = data.image;
+            img.style.maxWidth = '100%';
+            img.style.borderRadius = '10px';
+            const box = out.model1;
+            const u = document.createElement('div'); u.className = 'msg user'; u.textContent = el('prompt').value;
+            const a = document.createElement('div'); a.className = 'msg assistant'; a.appendChild(img);
+            box.appendChild(u); box.appendChild(a); box.scrollTop = box.scrollHeight; box.dataset.empty = 'false';
+          } else {
+            alert(data?.error || 'Failed to draw image');
+          }
+        } finally {
+          drawBtn.disabled = false;
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') ask();
+      });
+
+      // Advanced button toggles details
+      const advBtn = document.getElementById('advBtn');
+      const advDetails = document.getElementById('advanced');
+      if (advBtn && advDetails) {
+        // ensure hidden on load
+        advDetails.open = false;
+        advBtn.addEventListener('click', () => {
+          advDetails.open = !advDetails.open;
+        });
+      }
+
+      // Parse advanced JSON textarea safely
+      function parseAdvanced() {
+        const t = document.getElementById('advancedJson');
+        if (!t) return {};
+        try {
+          const data = JSON.parse(t.value || '{}');
+          return typeof data === 'object' && data ? data : {};
+        } catch (_) { return {}; }
+      }
+
+      async function askSingle(modelId) {
+        const modelValue = el(`model-${modelId.slice(-1)}`).value;
+        if (!modelValue) return;
+        const provider = getProviderFromModel(modelValue);
+        if (!provider) return;
+        
+        askBtn.disabled = true;
+        setLoading(modelId, true);
+        const promptMain = el('prompt').value;
+        const followInput = el('follow-' + modelId);
+        const followText = followInput ? followInput.value.trim() : '';
+        const usePrompt = followText || promptMain;
+        const showReasoning = el('show-reasoning').checked;
+        try {
+          const adv = parseAdvanced();
+          const body = {
+            prompt: usePrompt,
+            system: withBriefReasoning((adv[provider]?.system ?? adv.system) ?? '', modelValue, showReasoning),
+            histories: window.__histories,
+            providers: {
+              [provider]: true,
+            },
+            models: {
+              [provider]: modelValue,
+            },
+            temperature: (adv[provider]?.temperature ?? adv.temperature) ?? 0.2,
+            maxTokens: (adv[provider]?.maxTokens ?? adv.maxTokens),
+            maxCompletionTokens: (adv[provider]?.max_completion_tokens ?? adv.max_completion_tokens) ?? 1024,
+            timeoutMs: (adv[provider]?.timeoutMs ?? adv.timeoutMs) ?? 30000,
+            showReasoning: showReasoning,
+          };
+          const res = await fetch('/api/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          const r = data[provider];
+          if (r?.ok) {
+            const box = out[modelId];
+            const u = document.createElement('div'); u.className = 'msg user'; u.textContent = usePrompt;
+            const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = r.text || '';
+            box.appendChild(u); box.appendChild(a); box.scrollTop = box.scrollHeight; box.dataset.empty = 'false';
+            document.getElementById('lat-' + modelId).textContent = `${r.latencyMs} ms`;
+            window.__histories[modelId].push(
+              { role: 'user', content: usePrompt },
+              { role: 'assistant', content: r.text || '' }
+            );
+          } else {
+            out[modelId].innerHTML = '<span class="error">' + (r?.error || 'Error') + '</span>';
+            document.getElementById('lat-' + modelId).textContent = '';
+          }
+        } catch (err) {
+          console.error(`Error in askSingle(${modelId}):`, err);
+        } finally {
+          askBtn.disabled = false;
+          setLoading(modelId, false);
+        }
+      }
+
+      const btnModel1 = document.getElementById('ask-model1');
+      const btnModel2 = document.getElementById('ask-model2');
+      const btnModel3 = document.getElementById('ask-model3');
+      if (btnModel1) btnModel1.addEventListener('click', () => askSingle('model1'));
+      if (btnModel2) btnModel2.addEventListener('click', () => askSingle('model2'));
+      if (btnModel3) btnModel3.addEventListener('click', () => askSingle('model3'));
+
+      // Clear functions
+      function clearConversation(modelId) {
+        const box = out[modelId];
+        if (box) {
+          box.textContent = '';
+          box.dataset.empty = 'true';
+        }
+        if (!window.__histories) window.__histories = { model1: [], model2: [], model3: [] };
+        if (window.__histories[modelId]) window.__histories[modelId] = [];
+        const lat = document.getElementById('lat-' + modelId);
+        if (lat) lat.textContent = '';
+        const follow = document.getElementById('follow-' + modelId);
+        if (follow) follow.value = '';
+      }
+      function clearAllConversations() {
+        ['model1','model2','model3'].forEach(clearConversation);
+      }
+      const resetAllBtn = document.getElementById('resetAllBtn');
+      if (resetAllBtn) resetAllBtn.addEventListener('click', clearAllConversations);
+      const clear1 = document.getElementById('clear-model1');
+      const clear2 = document.getElementById('clear-model2');
+      const clear3 = document.getElementById('clear-model3');
+      if (clear1) clear1.addEventListener('click', () => clearConversation('model1'));
+      if (clear2) clear2.addEventListener('click', () => clearConversation('model2'));
+      if (clear3) clear3.addEventListener('click', () => clearConversation('model3'));
+
+      // Wire card control buttons
+      // Traffic light style controls
+      document.getElementById('dot-hide-model1').addEventListener('click', () => hideModel('model1'));
+      document.getElementById('dot-hide-model2').addEventListener('click', () => hideModel('model2'));
+      document.getElementById('dot-hide-model3').addEventListener('click', () => hideModel('model3'));
+      document.getElementById('dot-max-model1').addEventListener('click', () => maximizeModel('model1'));
+      document.getElementById('dot-max-model2').addEventListener('click', () => maximizeModel('model2'));
+      document.getElementById('dot-max-model3').addEventListener('click', () => maximizeModel('model3'));
+      document.getElementById('dot-restore-model1').addEventListener('click', restoreAll);
+      document.getElementById('dot-restore-model2').addEventListener('click', restoreAll);
+      document.getElementById('dot-restore-model3').addEventListener('click', restoreAll);
+    </script>
+  </body>
+  </html>
+
+
