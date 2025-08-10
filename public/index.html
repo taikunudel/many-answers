@@ -49,10 +49,10 @@
         position: relative;
         background: var(--card);
         border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 16px;
-        backdrop-filter: blur(14px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+        border-radius: 12px;
+        padding: 6px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
       }
       label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
       input[type="text"], textarea, select, input[type="number"] {
@@ -62,6 +62,10 @@
         font-size: 16px; font-family: inherit;
       }
       textarea { min-height: 90px; }
+      textarea#prompt { min-height: 40px; max-height: 140px; resize: none; overflow: auto; transition: height 0.2s ease; }
+      .attachments-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: -6px 0 4px 0; }
+      .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,0.65); color: var(--muted); font-size: 12px; }
+      .chip .remove { cursor: pointer; color: #b00020; font-weight: 600; }
       .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
       .btn { 
         padding: 10px 14px; border: 1px solid rgba(10,132,255,0.25);
@@ -75,6 +79,58 @@
       .btn:disabled { opacity: 0.6; cursor: not-allowed; }
       .switch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
       .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.7); color: var(--muted); font-size: 12px; }
+
+      /* Floating prompt panel (independent window) */
+      #panel-bottom {
+        position: fixed;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        width: min(900px, 92vw);
+        z-index: 2000;
+        margin-top: 0 !important;
+        pointer-events: auto;
+        padding: 6px;
+      }
+      /* Thin drag strip on top of the prompt panel so dragging never conflicts with inputs */
+      #panel-bottom .panel-drag-strip {
+        position: absolute; top: 0; left: 0; right: 0; height: 12px; cursor: move;
+        border-top-left-radius: 12px; border-top-right-radius: 12px;
+        z-index: 1;
+      }
+      .control-panel-section { transition: max-height 0.25s ease, opacity 0.25s ease; overflow: hidden; }
+      .control-panel-section.hidden { max-height: 0; opacity: 0; margin-top: 0; padding-top: 0; }
+      .control-panel-section:not(.hidden) { max-height: 520px; opacity: 1; }
+      .toggle-controls-btn { position: absolute; top: 8px; right: 8px; font-size: 12px; }
+
+      /* Make conversation windows utilize screen space (independent of prompt panel) */
+      .answers { min-height: 100vh; padding-bottom: 24px; }
+      .card { min-height: 200px; }
+      /* .convo max-height is defined later for cards; keep it local and independent */
+      
+      /* Control panel toggle */
+      .control-panel-section { transition: all 0.3s ease; overflow: hidden; }
+      .control-panel-section.hidden { max-height: 0; opacity: 0; margin: 0; padding: 0; }
+      .control-panel-section:not(.hidden) { max-height: 500px; opacity: 1; }
+      .settings-fab {
+        position: fixed; top: 12px; left: 12px; z-index: 3000;
+        width: 36px; height: 36px; border-radius: 50%;
+        display: grid; place-items: center; cursor: pointer;
+        background: rgba(15,18,24,0.45); color: #eaf2ff; border: 1px solid rgba(255,255,255,0.28);
+        box-shadow: 0 6px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.35);
+        backdrop-filter: blur(10px);
+      }
+      .settings-fab:hover { background: rgba(15,18,24,0.65); }
+      .settings-modal {
+        position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 4000;
+        background: rgba(0,0,0,0.35);
+      }
+      .settings-modal.open { display: flex; }
+      .settings-sheet {
+        width: min(820px, 92vw); max-height: min(80vh, 760px); overflow: auto;
+        background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px;
+        box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+      }
       .answers { margin-top: 4px; position: relative; }
       .card {
         position: relative; background: var(--card);
@@ -82,13 +138,13 @@
         min-height: 200px; white-space: pre-wrap; backdrop-filter: blur(12px);
         box-shadow: 0 8px 18px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
         resize: none; overflow: auto; min-width: 240px; min-height: 200px;
+        display: flex; flex-direction: column;
       }
       /* Subtle per-card tint; center uses a randomized base hue set in JS */
       .card { --tint-h: 210; --tint-s: 65%; --tint-l: 96%; --tint-a: 0.65; }
       .card { background: radial-gradient(circle at 50% 38%, hsla(var(--tint-h), var(--tint-s), var(--tint-l), var(--tint-a)), rgba(255,255,255,0.55) 68%); }
       body.dark .card { background: radial-gradient(circle at 50% 38%, hsla(var(--tint-h), 65%, 34%, 0.32), rgba(20,24,30,0.60) 68%); border-color: rgba(255,255,255,0.14); }
       /* Smooth brand-style panel animation (like top-left title) */
-      .card { overflow: hidden; }
       .card::before {
         content: '';
         position: absolute; inset: -2px;
@@ -146,13 +202,49 @@
       .resize-sw { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: sw-resize; border-radius: 6px; }
       .resize-se { bottom: -4px; right: -4px; width: 12px; height: 12px; cursor: se-resize; border-radius: 6px; }
       /* Individual card resizing only - no column resizers */
-      .card h3 { position: relative; display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px 0; font-size: 14px; font-weight: 500; }
+      .card h3 { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px 0; font-size: 14px; font-weight: 500; background: transparent; backdrop-filter: none; border-bottom: none; padding-top: 6px; }
       .card h3 { cursor: move; user-select: none; }
-      .mini { margin-top: 4px; display: flex; gap: 8px; align-items: center; }
-      .mini input[type="text"] { flex: 1; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); font-size: 15px; }
+      .mini { margin-top: 4px; display: flex; gap: 8px; align-items: center; --mini-collapsed: 220px; position: sticky; bottom: 0; z-index: 2; background: transparent; border-top: none; padding-top: 6px; }
+      /* Prompt row: buttons to the left, textarea to the right */
+      .prompt-row { display: flex; gap: 8px; align-items: flex-start; }
+      .prompt-row .left-controls { display: flex; flex-direction: column; gap: 6px; }
+      .prompt-row .right-controls { display: flex; flex-direction: row; gap: 6px; }
+      :root { --follow-lh: 18px; }
+      .mini input[type="text"], .mini textarea.follow {
+        flex: 1 1 auto; width: 100%; max-width: var(--mini-collapsed, 220px);
+        padding: 6px 10px; border-radius: 10px; border: 1px solid var(--border);
+        background: rgba(10,10,10,0.65); color: #eaeef7; font-size: 13px; line-height: var(--follow-lh);
+        transition: max-width 0.25s ease, padding 0.18s ease, font-size 0.18s ease, height 0.15s ease; resize: none;
+        min-height: calc(var(--follow-lh) * 2 + 12px);
+        max-height: calc(var(--follow-lh) * 5 + 12px);
+        height: calc(var(--follow-lh) * 2 + 12px);
+        overflow-y: auto;
+      }
+      /* Expand follow-up when user hovers the convo OR focuses the input */
+      .mini input[type="text"]:focus, .mini textarea.follow:focus,
+      .convo:hover + .mini input[type="text"], .convo:hover + .mini textarea.follow,
+      .convo:focus + .mini input[type="text"], .convo:focus + .mini textarea.follow { padding: 8px 12px; font-size: 15px; }
+      /* Expand width on hover over the input or its mini bar */
+      .mini:hover input[type="text"], .mini input[type="text"]:hover,
+      .mini:hover textarea.follow, .mini textarea.follow:hover { max-width: 100%; }
       .mini .mini-btn { padding: 8px 12px; border: 1px solid rgba(10,132,255,0.25); border-radius: 10px; background: linear-gradient(180deg, rgba(10,132,255,0.2), rgba(10,132,255,0.12)); font-weight: 600; cursor: pointer; }
       .controls { display: inline-flex; gap: 6px; align-items: center; margin-left: 8px; }
       .icon-btn { padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.7); cursor: pointer; font-size: 12px; }
+      /* Compact per-card model selector */
+      .model-select {
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(255,255,255,0.85);
+        color: var(--text);
+        max-width: 220px;
+      }
+      body.dark .model-select {
+        background: rgba(24,26,32,0.92);
+        color: #eef3fb;
+        border-color: rgba(255,255,255,0.12);
+      }
       
       /* Hover lighting effect for interactive buttons */
       button, .btn, .mini-btn, .icon-btn {
@@ -188,19 +280,7 @@
         100% { box-shadow: 0 0 8px rgba(255,255,255,0.8); transform: scale(1.25); }
       }
       .card h3 .title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        position: absolute;
-        right: 8px;
-        left: auto;
-        transform: none;
-        pointer-events: none;
-        max-width: calc(100% - 160px); /* leave room for traffic dots */
-        white-space: normal;           /* allow wrapping */
-        word-break: break-word;
-        text-align: right;
-        line-height: 1.2;
+        display: none !important;
       }
       .card h3 .title span { position: relative; font-weight: 500; letter-spacing: 0.2px; }
       /* Remove previous shiny loading effects */
@@ -230,8 +310,12 @@
       /* Additional beautiful dots for height controls */
       .dot.blue { background: #0a84ff; }
       .dot.purple { background: #af52de; }
-      .card.maximized { position: static; width: 100%; height: auto; z-index: auto; padding: 16px; border-radius: 16px; min-height: calc(100vh - 200px); margin: 0; }
-      .card.maximized .convo { max-height: none; min-height: 60vh; padding: 12px; overflow-y: visible; }
+      .card.maximized { position: static; width: 100%; height: auto; z-index: auto; padding: 16px; border-radius: 16px; min-height: calc(100vh - 200px); margin: 0; overflow: auto; }
+      .card.maximized .convo { max-height: none; min-height: 60vh; padding: 12px; overflow: visible; }
+      /* Minimized state: show only header tab with model name */
+      .card.minimized { height: 38px !important; min-height: 0 !important; overflow: hidden; }
+      .card.minimized .convo, .card.minimized .mini { display: none !important; }
+      .card.minimized h3 { padding-bottom: 6px; }
       .card.maximized .msg { font-size: 1.08rem; line-height: 1.6; padding: 12px 14px; }
       .card.maximized h3 { margin-bottom: 10px; font-size: 18px; }
       .card.maximized .mini { margin-top: 14px; }
@@ -243,7 +327,7 @@
       /* Isolated layout: each card positioned independently */
       .answers.isolated { position: relative; display: block; min-height: 500px; }
       .answers.isolated .card { position: absolute; }
-      .convo { position: relative; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; border-radius: 8px; padding: 4px; background: rgba(255,255,255,0.55); border: 1px solid var(--border); }
+      .convo { position: relative; /* no scrolling here; card scrolls */ max-height: none; overflow: visible; display: flex; flex-direction: column; gap: 6px; border-radius: 8px; padding: 4px; background: transparent; border-color: transparent; flex: 1 1 auto; }
       .convo[data-empty="true"] { border-color: transparent; background: transparent; }
       .msg { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); }
       .msg.user { background: rgba(10,132,255,0.08); border-color: rgba(10,132,255,0.2); }
@@ -265,7 +349,7 @@
       .brand-fixed {
         position: fixed;
         top: 12px;
-        left: 16px;
+        left: 60px;
         z-index: 1000;
         font-weight: 800;
         font-size: 1.5em;
@@ -348,21 +432,135 @@
       <source src="bg.mp4" type="video/mp4" />
     </video>
     <div class="brand-fixed" id="brand"><span class="brand-text">🤔 Many Answers</span></div>
+    <button id="settingsFab" class="settings-fab" title="Settings" aria-label="Settings">⚙️</button>
     <div class="container">
-      <div class="panel" id="panel-top" style="display:grid; gap:12px;">
-        <div>
-          <label>Prompt</label>
-          <textarea id="prompt" placeholder="Ask anything..."></textarea>
+      <div class="answers row" id="answers" style="margin-top:16px; position: relative;">
+        <div class="card" id="card-model1">
+          <h3>
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <span class="traffic">
+                <span class="dot red" id="dot-hide-model1" title="Hide"></span>
+                <span class="dot yellow" id="dot-restore-model1" title="Restore"></span>
+                <span class="dot green" id="dot-max-model1" title="Maximize"></span>
+
+              </span>
+              <select class="model-select" id="select-model1" title="Choose model for this window"></select>
+              <div class="title"><span data-text="Model 1" id="model1-name">Model 1</span></div>
+              <button class="icon-btn" id="handoff-model1" title="Handoff from active card to this model">Handoff ▸</button>
+              <button class="icon-btn" id="clear-model1" title="Clear this conversation">Clear</button>
+            </span>
+            
+          </h3>
+          <div class="convo" id="model1" data-empty="true" tabindex="0"></div>
+          <div class="mini">
+            <button id="ask-model1" class="mini-btn">Ask</button>
+            <textarea id="follow-model1" class="follow" rows="2" placeholder="Follow up to Model 1…"></textarea>
         </div>
+        </div>
+        <div class="card" id="card-model2">
+          <h3>
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <span class="traffic">
+                <span class="dot red" id="dot-hide-model2" title="Hide"></span>
+                <span class="dot yellow" id="dot-restore-model2" title="Restore"></span>
+                <span class="dot green" id="dot-max-model2" title="Maximize"></span>
+
+              </span>
+              <select class="model-select" id="select-model2" title="Choose model for this window"></select>
+              <div class="title"><span data-text="Model 2" id="model2-name">Model 2</span></div>
+              <button class="icon-btn" id="handoff-model2" title="Handoff from active card to this model">Handoff ▸</button>
+              <button class="icon-btn" id="clear-model2" title="Clear this conversation">Clear</button>
+            </span>
+            
+          </h3>
+          <div class="convo" id="model2" data-empty="true" tabindex="0"></div>
+          <div class="mini">
+            <button id="ask-model2" class="mini-btn">Ask</button>
+            <textarea id="follow-model2" class="follow" rows="2" placeholder="Follow up to Model 2…"></textarea>
+          </div>
+        </div>
+        <div class="card" id="card-model3">
+          <h3>
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <span class="traffic">
+                <span class="dot red" id="dot-hide-model3" title="Hide"></span>
+                <span class="dot yellow" id="dot-restore-model3" title="Restore"></span>
+                <span class="dot green" id="dot-max-model3" title="Maximize"></span>
+
+              </span>
+              <select class="model-select" id="select-model3" title="Choose model for this window"></select>
+              <div class="title"><span data-text="Model 3" id="model3-name">Model 3</span></div>
+              <button class="icon-btn" id="handoff-model3" title="Handoff from active card to this model">Handoff ▸</button>
+              <button class="icon-btn" id="clear-model3" title="Clear this conversation">Clear</button>
+            </span>
+            
+          </h3>
+          <div class="convo" id="model3" data-empty="true" tabindex="0"></div>
+          <div class="mini">
+            <button id="ask-model3" class="mini-btn">Ask</button>
+            <textarea id="follow-model3" class="follow" rows="2" placeholder="Follow up to Model 3…"></textarea>
+          </div>
+        </div>
+        <div class="card" id="card-model5" style="display: none;">
+          <h3>
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <span class="traffic">
+                <span class="dot red" id="dot-hide-model5" title="Hide"></span>
+                <span class="dot yellow" id="dot-restore-model5" title="Restore"></span>
+                <span class="dot green" id="dot-max-model5" title="Maximize"></span>
+
+              </span>
+              <div class="title"><span data-text="Search Model" id="model5-name">Search Model</span></div>
+              <button class="icon-btn" id="handoff-model5" title="Handoff from active card to this model">Handoff ▸</button>
+              <button class="icon-btn" id="clear-model5" title="Clear this conversation">Clear</button>
+            </span>
+            
+          </h3>
+          <div class="convo" id="model5" data-empty="true" tabindex="0"></div>
+          <div class="mini">
+            <button id="ask-model5" class="mini-btn">Ask</button>
+            <textarea id="follow-model5" class="follow" rows="2" placeholder="Follow up to Search Model…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Prompt section moved to bottom -->
+      <div class="panel" id="panel-bottom" style="display:grid; gap:12px; position: fixed;">
+        <div class="panel-drag-strip drag-handle" aria-hidden="true"></div>
+        <!-- Replaced by global FAB -->
+        <div class="prompt-row">
+          <div class="left-controls">
+            <button id="askBtn" class="btn btn-sm">Ask all</button>
+          </div>
+          <textarea id="prompt" placeholder="Ask anything..." style="flex:1 1 auto;"></textarea>
+          <div class="right-controls">
+            <input type="file" id="attachInput" multiple style="display:none" />
+            <button id="attachBtn" class="btn btn-sm" title="Attach files to include in your question">📎 Attach</button>
+            <button id="handoffAllBtn" class="btn btn-sm" title="Send this turn from the active card to all other enabled models">Handoff all</button>
+            <button id="searchToggleBtn" class="btn btn-sm" title="Toggle search mode - when active, all questions use search model">🔍 Search</button>
+            <button id="deepResearchToggleBtn" class="btn btn-sm" title="Toggle deep research mode - when active, all questions use deep research model">🔬 GPT Deep</button>
+
+            <button id="geminiResearchToggleBtn" class="btn btn-sm" title="Toggle Gemini Deep (Gemini 2.5 Pro) instructions mode">💎 Gemini Deep</button>
+            <button id="superResearchToggleBtn" class="btn btn-sm" title="Super Research - uses GPT Deep and Gemini 2.5 Pro then GPT-4o summarizes into one comprehensive report">🚀 Super</button>
+            <button id="usageMonitorBtn" class="btn btn-sm" title="Open API usage monitor window">📊 API Monitor</button>
+            <button id="summarizeBtn" class="btn btn-sm" title="Summarize outputs from current windows into bullet points">📝 Summarize</button>
+            <button id="addWindowBtn" class="btn btn-sm" title="Add a new conversation window">➕ Add Window</button>
+            <button id="resetLayoutBtn" class="btn btn-sm" title="Reset card layout to grid">🔄 Reset Layout</button>
+            <button id="closeAllWindowsBtn" class="btn btn-sm" title="Close all research windows">❌ Close All</button>
+          </div>
+        </div>
+        <div id="attachmentList" class="attachments-row" aria-live="polite"></div>
+        <!-- Inline control panel kept for structure but hidden; settings open in modal -->
+        <div class="control-panel-section" id="controlPanelSection" style="display:none;">
         <div class="row">
           <div>
             <label>Model 1</label>
             <select id="model-1">
               <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
               <option value="o3-2025-04-16">o3 2025-04-16</option>
-              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16</option>
-              <option value="gpt-5-mini-2025-08-07">GPT-5 Mini</option>
-              <option value="gpt-4o">GPT-4o</option>
+
+
+
               <option value="gpt-4o-mini">GPT-4o Mini</option>
               <option value="gpt-4.1">GPT-4.1</option>
               <option value="gpt-4-turbo">GPT-4 Turbo</option>
@@ -386,9 +584,9 @@
               <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805</option>
               <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
               <option value="o3-2025-04-16">o3 2025-04-16</option>
-              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16</option>
+
               <option value="gpt-5-mini-2025-08-07" selected>GPT-5 Mini</option>
-              <option value="gpt-4o">GPT-4o</option>
+
               <option value="gpt-4o-mini">GPT-4o Mini</option>
               <option value="gpt-4.1">GPT-4.1</option>
               <option value="gpt-4-turbo">GPT-4 Turbo</option>
@@ -412,12 +610,95 @@
               <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
               <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
               <option value="o3-2025-04-16" selected>o3 2025-04-16</option>
-              <option value="o4-mini-2025-04-16">o4-mini 2025-04-16</option>
-              <option value="gpt-5-mini-2025-08-07">GPT-5 Mini</option>
-              <option value="gpt-4o">GPT-4o</option>
+
+
+
               <option value="gpt-4o-mini">GPT-4o Mini</option>
               <option value="gpt-4.1">GPT-4.1</option>
               <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805</option>
+              <option value="claude-4.1-opus">Claude Opus 4.1</option>
+              <option value="claude-4-sonnet">Claude Sonnet 4</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+              <option value="claude-3-opus-latest">Claude 3 Opus</option>
+              <option value="claude-3-haiku-latest">Claude 3 Haiku</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
+            </select>
+          </div>
+          <div>
+            <label>Search Model</label>
+            <select id="model-5">
+              <option value="gpt-4o-mini-search-preview-2025-03-11" selected>GPT-4o Mini Search Preview</option>
+              <option value="">-- Disabled --</option>
+              <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
+              <option value="o3-2025-04-16">o3 2025-04-16</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="claude-4.1-opus">Claude Opus 4.1</option>
+              <option value="claude-4-sonnet">Claude Sonnet 4</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+              <option value="claude-3-opus-latest">Claude 3 Opus</option>
+              <option value="claude-3-haiku-latest">Claude 3 Haiku</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
+            </select>
+          </div>
+          <div>
+            <label>Deep Research Model</label>
+            <select id="model-6">
+              <option value="o4-mini-deep-research-2025-06-26" selected>o4 Mini Deep Research 2025-06-26</option>
+              <option value="">-- Disabled --</option>
+              <option value="o1-deep-research">o1 Deep Research</option>
+              <option value="o3-deep-research">o3 Deep Research</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
+              <option value="o3-2025-04-16">o3 2025-04-16</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Gemini Model</label>
+            <select id="model-8">
+              <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro</option>
+              <option value="">-- Disabled --</option>
+              <option value="gemini-2.0-flash-thinking">Gemini 2.0 Flash Thinking</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
+              <option value="o3-2025-04-16">o3 2025-04-16</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            </select>
+          </div>
+          <div>
+            <label>Super Research Summarizer</label>
+            <select id="model-9">
+              <option value="gpt-4o-mini" selected>GPT-4o Mini</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="">-- Disabled --</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="o3-pro-2025-06-10">o3-pro 2025-06-10</option>
+              <option value="o3-2025-04-16">o3 2025-04-16</option>
               <option value="claude-opus-4-1-20250805">Claude Opus 4.1 20250805</option>
               <option value="claude-4.1-opus">Claude Opus 4.1</option>
               <option value="claude-4-sonnet">Claude Sonnet 4</option>
@@ -440,18 +721,19 @@
           <button id="bgClearBtn" class="btn btn-sm">Clear background</button>
         </div>
         <div class="toolbar">
-          <button id="askBtn" class="btn btn-wide">Ask all</button>
           <button id="streamBtn" class="btn">Stream Model 1</button>
           <button id="drawBtn" class="btn">Draw Model 1</button>
           <button id="advBtn" class="btn btn-sm">Advanced</button>
           <button id="resetAllBtn" class="btn btn-sm" title="Clear all conversations">Start over</button>
-          <button id="resetLayoutBtn" class="btn btn-sm" title="Reset card layout to grid">Reset layout</button>
+
           <label class="switch"><input type="checkbox" id="enable-model1" checked /> Model 1</label>
           <label class="switch"><input type="checkbox" id="enable-model2" checked /> Model 2</label>
           <label class="switch"><input type="checkbox" id="enable-model3" checked /> Model 3</label>
+          <label class="switch"><input type="checkbox" id="enable-model5" checked /> Search Model</label>
           <label class="switch"><input type="checkbox" id="show-reasoning" /> Show reasoning</label>
 
         </div>
+        </div> <!-- End control-panel-section -->
         <details id="advanced">
           <div style="margin-top:10px; display:grid; gap:8px;">
             <label for="advancedJson">Advanced JSON per provider</label>
@@ -480,69 +762,13 @@
         </details>
       </div>
 
-
-      <div class="answers row" id="answers" style="margin-top:16px; position: relative;">
-        <div class="card" id="card-model1">
-          <h3>
-            <span style="display:inline-flex; align-items:center; gap:8px;">
-              <span class="traffic">
-                <span class="dot red" id="dot-hide-model1" title="Hide"></span>
-                <span class="dot yellow" id="dot-restore-model1" title="Restore"></span>
-                <span class="dot green" id="dot-max-model1" title="Maximize"></span>
-                <span class="dot blue" id="dot-tall-model1" title="Taller"></span>
-                <span class="dot purple" id="dot-short-model1" title="Shorter"></span>
-              </span>
-              <div class="title"><span data-text="Model 1" id="model1-name">Model 1</span></div>
-              <button class="icon-btn" id="clear-model1" title="Clear this conversation">Clear</button>
-            </span>
-            
-          </h3>
-          <div class="convo" id="model1" data-empty="true"></div>
-          <div class="mini">
-            <input id="follow-model1" type="text" placeholder="Follow up to Model 1…" />
-            <button id="ask-model1" class="mini-btn">Ask Model 1</button>
-          </div>
-        </div>
-        <div class="card" id="card-model2">
-          <h3>
-            <span style="display:inline-flex; align-items:center; gap:8px;">
-              <span class="traffic">
-                <span class="dot red" id="dot-hide-model2" title="Hide"></span>
-                <span class="dot yellow" id="dot-restore-model2" title="Restore"></span>
-                <span class="dot green" id="dot-max-model2" title="Maximize"></span>
-                <span class="dot blue" id="dot-tall-model2" title="Taller"></span>
-                <span class="dot purple" id="dot-short-model2" title="Shorter"></span>
-              </span>
-              <div class="title"><span data-text="Model 2" id="model2-name">Model 2</span></div>
-              <button class="icon-btn" id="clear-model2" title="Clear this conversation">Clear</button>
-            </span>
-            
-          </h3>
-          <div class="convo" id="model2" data-empty="true"></div>
-          <div class="mini">
-            <input id="follow-model2" type="text" placeholder="Follow up to Model 2…" />
-            <button id="ask-model2" class="mini-btn">Ask Model 2</button>
-          </div>
-        </div>
-        <div class="card" id="card-model3">
-          <h3>
-            <span style="display:inline-flex; align-items:center; gap:8px;">
-              <span class="traffic">
-                <span class="dot red" id="dot-hide-model3" title="Hide"></span>
-                <span class="dot yellow" id="dot-restore-model3" title="Restore"></span>
-                <span class="dot green" id="dot-max-model3" title="Maximize"></span>
-                <span class="dot blue" id="dot-tall-model3" title="Taller"></span>
-                <span class="dot purple" id="dot-short-model3" title="Shorter"></span>
-              </span>
-              <div class="title"><span data-text="Model 3" id="model3-name">Model 3</span></div>
-              <button class="icon-btn" id="clear-model3" title="Clear this conversation">Clear</button>
-            </span>
-            
-          </h3>
-          <div class="convo" id="model3" data-empty="true"></div>
-          <div class="mini">
-            <input id="follow-model3" type="text" placeholder="Follow up to Model 3…" />
-            <button id="ask-model3" class="mini-btn">Ask Model 3</button>
+      <!-- Settings modal -->
+      <div id="settingsModal" class="settings-modal" aria-hidden="true">
+        <div class="settings-sheet">
+          <h3 style="margin-top:0">Settings</h3>
+          <div id="settingsBody"></div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+            <button id="closeSettings" class="btn btn-sm">Close</button>
           </div>
         </div>
       </div>
@@ -555,12 +781,27 @@
       const drawBtn = el('drawBtn');
       const statusEl = el('status');
       // in-memory conversation histories per model
-      window.__histories = window.__histories || { model1: [], model2: [], model3: [] };
+      window.__histories = window.__histories || { model1: [], model2: [], model3: [], model5: [] };
       const out = {
         model1: el('model1'),
         model2: el('model2'),
         model3: el('model3'),
+        model5: el('model5'),
       };
+      // Track last active card for handoff purposes
+      let __activeCardId = 'model1';
+      // Update active card when typing/focusing in follow areas
+      ['model1','model2','model3','model5'].forEach((m) => {
+        const follow = document.getElementById('follow-' + m);
+        if (follow) {
+          follow.addEventListener('focus', () => { __activeCardId = m; });
+          follow.addEventListener('pointerdown', () => { __activeCardId = m; });
+        }
+        const card = document.getElementById('card-' + m);
+        if (card) {
+          card.addEventListener('pointerdown', () => { __activeCardId = m; });
+        }
+      });
       
       // Helper function to get provider from model
       function getProviderFromModel(modelValue) {
@@ -570,23 +811,107 @@
         if (modelValue.startsWith('gemini-')) return 'gemini';
         return null;
       }
+
+      // Central list of model options available to per-window dropdowns
+      const MODEL_OPTIONS = [
+        { value: '', label: '-- Disabled --' },
+        // OpenAI
+        { value: 'gpt-5-mini-2025-08-07', label: 'GPT-5 Mini' },
+        { value: 'o4-mini-deep-research-2025-06-26', label: 'o4 Mini Deep Research 2025-06-26' },
+        { value: 'o3-pro-2025-06-10', label: 'o3-pro 2025-06-10' },
+        { value: 'o3-2025-04-16', label: 'o3 2025-04-16' },
+        { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+        { value: 'gpt-4.1', label: 'GPT-4.1' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+        { value: 'gpt-4o', label: 'GPT-4o' },
+        { value: 'gpt-4o-mini-search-preview-2025-03-11', label: 'GPT-4o Mini Search Preview' },
+        // Anthropic
+        { value: 'claude-opus-4-1-20250805', label: 'Claude Opus 4.1 20250805' },
+        { value: 'claude-4.1-opus', label: 'Claude Opus 4.1' },
+        { value: 'claude-4-sonnet', label: 'Claude Sonnet 4' },
+        { value: 'claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet' },
+        { value: 'claude-3-opus-latest', label: 'Claude 3 Opus' },
+        { value: 'claude-3-haiku-latest', label: 'Claude 3 Haiku' },
+        // Google
+        { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+        { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+        { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+        { value: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash 8B' },
+      ];
+
+      function populateModelSelect(selectEl, selectedValue) {
+        if (!selectEl) return;
+        selectEl.innerHTML = '';
+        MODEL_OPTIONS.forEach(opt => {
+          const o = document.createElement('option');
+          o.value = opt.value;
+          o.textContent = opt.label;
+          selectEl.appendChild(o);
+        });
+        if (typeof selectedValue === 'string') {
+          const exists = Array.from(selectEl.options).some(o => o.value === selectedValue);
+          if (exists) selectEl.value = selectedValue;
+        }
+      }
+
+      function cardTitleSpanFor(modelId) {
+        const card = document.getElementById('card-' + modelId);
+        return card?.querySelector('.title span') || null;
+      }
+      function updateCardTitleFromSelect(modelId) {
+        const sel = document.getElementById('select-' + modelId);
+        const span = cardTitleSpanFor(modelId);
+        if (!sel || !span) return;
+        const txt = sel.options[sel.selectedIndex]?.text || span.textContent;
+        span.textContent = txt.includes('--') ? span.getAttribute('data-text') || span.textContent : txt;
+        span.setAttribute('data-text', span.textContent);
+      }
+
+      function initBuiltInCardSelect(modelId, settingsSelectId, storageKey) {
+        const sel = document.getElementById('select-' + modelId);
+        const settingsSel = document.getElementById(settingsSelectId);
+        const LS = window.localStorage;
+        if (!sel) return;
+        const preferred = (LS.getItem(storageKey) || settingsSel?.value || '');
+        populateModelSelect(sel, preferred);
+        updateCardTitleFromSelect(modelId);
+        sel.addEventListener('change', () => {
+          const v = sel.value || '';
+          try { LS.setItem(storageKey, v); } catch {}
+          if (settingsSel) settingsSel.value = v;
+          updateCardTitleFromSelect(modelId);
+          updateAskButtonText();
+        });
+      }
       
       // Update model display names when dropdowns change
       function updateModelNames() {
         for (let i = 1; i <= 3; i++) {
-          const select = el(`model-${i}`);
           const nameEl = el(`model${i}-name`);
-          if (select && nameEl) {
-            const selectedText = select.options[select.selectedIndex]?.text || `Model ${i}`;
+          const perCardSel = el(`select-model${i}`);
+          const settingsSel = el(`model-${i}`);
+          if (nameEl) {
+            const selectedText = perCardSel?.options[perCardSel.selectedIndex]?.text || settingsSel?.options[settingsSel.selectedIndex]?.text || `Model ${i}`;
             nameEl.textContent = selectedText.includes('--') ? `Model ${i}` : selectedText;
             nameEl.setAttribute('data-text', nameEl.textContent);
           }
+        }
+        // Handle model5 (search model) separately
+        const select5 = el('model-5');
+        const nameEl5 = el('model5-name');
+        if (select5 && nameEl5) {
+          const selectedText = select5.options[select5.selectedIndex]?.text || 'Search Model';
+          nameEl5.textContent = selectedText.includes('--') ? 'Search Model' : selectedText;
+          nameEl5.setAttribute('data-text', nameEl5.textContent);
         }
       }
       
       el('model-1').addEventListener('change', updateModelNames);
       el('model-2').addEventListener('change', updateModelNames);
       el('model-3').addEventListener('change', updateModelNames);
+      el('model-5').addEventListener('change', updateModelNames);
+      el('model-6').addEventListener('change', updateModelNames);
 
       // Persistence: remember last selected models and toggles in localStorage
       const LS = window.localStorage;
@@ -601,10 +926,13 @@
         setSelectIfPresent('model-1', LS.getItem('ma:model-1'));
         setSelectIfPresent('model-2', LS.getItem('ma:model-2'));
         setSelectIfPresent('model-3', LS.getItem('ma:model-3'));
+        setSelectIfPresent('model-5', LS.getItem('ma:model-5'));
+        setSelectIfPresent('model-6', LS.getItem('ma:model-6'));
         // Toggles
         const e1 = LS.getItem('ma:enable-model1'); if (e1 !== null) el('enable-model1').checked = e1 === '1';
         const e2 = LS.getItem('ma:enable-model2'); if (e2 !== null) el('enable-model2').checked = e2 === '1';
         const e3 = LS.getItem('ma:enable-model3'); if (e3 !== null) el('enable-model3').checked = e3 === '1';
+        const e5 = LS.getItem('ma:enable-model5'); if (e5 !== null) el('enable-model5').checked = e5 === '1';
         const sr = LS.getItem('ma:show-reasoning'); if (sr !== null) el('show-reasoning').checked = sr === '1';
         const dv = LS.getItem('ma:video'); if (dv !== null) { const on = dv === '1'; el('toggle-video').checked = on; /* enable video after it becomes ready; keep image until then */ }
         const dk = LS.getItem('ma:dark'); if (dk !== null) { const on = dk === '1'; el('toggle-dark').checked = on; document.body.classList.toggle('dark', on); }
@@ -618,13 +946,16 @@
       }
       function wirePersistence() {
         // Model selects
-        el('model-1').addEventListener('change', () => LS.setItem('ma:model-1', el('model-1').value || ''));
-        el('model-2').addEventListener('change', () => LS.setItem('ma:model-2', el('model-2').value || ''));
-        el('model-3').addEventListener('change', () => LS.setItem('ma:model-3', el('model-3').value || ''));
+        el('model-1').addEventListener('change', () => { const v = el('model-1').value || ''; LS.setItem('ma:model-1', v); const s = el('select-model1'); if (s) s.value = v; updateModelNames(); updateAskButtonText(); });
+        el('model-2').addEventListener('change', () => { const v = el('model-2').value || ''; LS.setItem('ma:model-2', v); const s = el('select-model2'); if (s) s.value = v; updateModelNames(); updateAskButtonText(); });
+        el('model-3').addEventListener('change', () => { const v = el('model-3').value || ''; LS.setItem('ma:model-3', v); const s = el('select-model3'); if (s) s.value = v; updateModelNames(); updateAskButtonText(); });
+        el('model-5').addEventListener('change', () => { LS.setItem('ma:model-5', el('model-5').value || ''); updateAskButtonText(); });
+        el('model-6').addEventListener('change', () => { LS.setItem('ma:model-6', el('model-6').value || ''); updateAskButtonText(); });
         // Toggles
-        el('enable-model1').addEventListener('change', () => LS.setItem('ma:enable-model1', el('enable-model1').checked ? '1' : '0'));
-        el('enable-model2').addEventListener('change', () => LS.setItem('ma:enable-model2', el('enable-model2').checked ? '1' : '0'));
-        el('enable-model3').addEventListener('change', () => LS.setItem('ma:enable-model3', el('enable-model3').checked ? '1' : '0'));
+        el('enable-model1').addEventListener('change', () => { LS.setItem('ma:enable-model1', el('enable-model1').checked ? '1' : '0'); updateAskButtonText(); });
+        el('enable-model2').addEventListener('change', () => { LS.setItem('ma:enable-model2', el('enable-model2').checked ? '1' : '0'); updateAskButtonText(); });
+        el('enable-model3').addEventListener('change', () => { LS.setItem('ma:enable-model3', el('enable-model3').checked ? '1' : '0'); updateAskButtonText(); });
+        el('enable-model5').addEventListener('change', () => { LS.setItem('ma:enable-model5', el('enable-model5').checked ? '1' : '0'); updateAskButtonText(); });
         el('show-reasoning').addEventListener('change', () => LS.setItem('ma:show-reasoning', el('show-reasoning').checked ? '1' : '0'));
         // Advanced JSON
         const advArea = document.getElementById('advancedJson');
@@ -691,6 +1022,11 @@
       wirePersistence();
       updateModelNames();
 
+      // Initialize per-window model dropdowns for built-in cards
+      initBuiltInCardSelect('model1', 'model-1', 'ma:model-1');
+      initBuiltInCardSelect('model2', 'model-2', 'ma:model-2');
+      initBuiltInCardSelect('model3', 'model-3', 'ma:model-3');
+
       // ----- Layout persistence (drag positions) -----
       function layoutStorageKey() { return 'ma:layout'; }
       function hasSavedLayout() { return !!LS.getItem(layoutStorageKey()); }
@@ -712,7 +1048,7 @@
         // Switch to isolated layout if we have any saved positions
         container.classList.add('isolated');
         
-        ['card-model1','card-model2','card-model3'].forEach((id) => {
+        ['card-model1','card-model2','card-model3','card-model5'].forEach((id) => {
           const spec = saved.cards[id];
           const card = document.getElementById(id);
           if (!card || !spec) return;
@@ -734,7 +1070,7 @@
         if (!container) return;
         container.classList.remove('isolated');
         container.style.minHeight = '';
-        ['card-model1','card-model2','card-model3'].forEach((id) => {
+        ['card-model1','card-model2','card-model3','card-model5'].forEach((id) => {
           const card = document.getElementById(id);
           if (!card) return;
           card.style.position = '';
@@ -745,10 +1081,62 @@
           card.style.zIndex = '';
         });
       }
+
+      // Reset layout to equal columns for the currently visible cards
+      function resetEqualLayout() {
+        try { LS.removeItem(layoutStorageKey()); } catch {}
+        const answers = document.getElementById('answers');
+        if (!answers) return;
+        
+        // Exit isolated/custom/single modes
+        answers.classList.remove('isolated', 'custom-layout', 'single');
+
+        // Clear inline positions for all cards
+        const allCards = Array.from(answers.querySelectorAll('.card'));
+        allCards.forEach((card) => {
+          card.style.position = '';
+          card.style.left = '';
+          card.style.top = '';
+          card.style.width = '';
+          card.style.height = '';
+          card.style.zIndex = '';
+          card.classList.remove('maximized','minimized');
+        });
+
+        // Reset answers container to default grid layout
+        answers.style.position = '';
+        answers.style.left = '';
+        answers.style.right = '';
+        answers.style.top = '';
+        answers.style.width = '';
+        answers.style.height = '';
+        answers.style.maxWidth = '';
+        answers.style.transform = '';
+        answers.style.alignItems = '';
+        answers.style.padding = '';
+        answers.style.margin = '';
+        answers.style.minHeight = '';
+
+        // Determine visible cards and set grid columns
+        const visibleCards = allCards.filter((c) => {
+          const cs = window.getComputedStyle(c);
+          return cs.display !== 'none' && cs.visibility !== 'hidden';
+        });
+        const count = Math.max(1, visibleCards.length);
+        answers.style.gridTemplateColumns = `repeat(${count}, 1fr)`;
+        answers.style.gap = '8px';
+        
+        // Set fixed height for cards
+        visibleCards.forEach((card) => {
+          card.style.height = '580px'; // Fixed height
+          card.style.minHeight = '';
+          card.style.maxHeight = '';
+        });
+      }
       function updateContainerHeightForLayout() {
         const container = document.getElementById('answers');
         if (!container || !container.classList.contains('custom-layout')) return;
-        const cards = ['card-model1','card-model2','card-model3']
+        const cards = ['card-model1','card-model2','card-model3','card-model5']
           .map((id) => document.getElementById(id))
           .filter(Boolean);
         let maxBottom = 0;
@@ -772,7 +1160,7 @@
         const container = document.getElementById('answers');
         if (!container || !container.classList.contains('custom-layout')) return;
         const current = { cards: {} };
-        ['card-model1','card-model2','card-model3'].forEach((id) => {
+        ['card-model1','card-model2','card-model3','card-model5'].forEach((id) => {
           const card = document.getElementById(id);
           if (!card) return;
           const left = parseFloat(card.style.left);
@@ -791,7 +1179,7 @@
         });
         try { LS.setItem(layoutStorageKey(), JSON.stringify(current)); } catch {}
       }
-      // window.addEventListener('beforeunload', saveAllLayouts);
+      window.addEventListener('beforeunload', saveAllLayouts);
 
       // Reset helper: restore default 1-2-1 grid
       function clearSavedColumns() {
@@ -871,28 +1259,49 @@
           model1: document.getElementById('enable-model1').checked,
           model2: document.getElementById('enable-model2').checked,
           model3: document.getElementById('enable-model3').checked,
+          model5: document.getElementById('enable-model5').checked,
         };
         const answers = document.getElementById('answers');
         const visibleCount = Object.values(vis).filter(Boolean).length;
 
-        if (visibleCount === 1) {
-          answers.style.gridTemplateColumns = '1fr';
-        } else if (visibleCount === 2) {
-          answers.style.gridTemplateColumns = '1fr 1fr';
-        } else {
-          answers.style.gridTemplateColumns = '1fr 2fr 1fr';
+        if (!answers.classList.contains('isolated')) {
+          if (visibleCount === 1) {
+            answers.style.gridTemplateColumns = '1fr';
+          } else if (visibleCount === 2) {
+            answers.style.gridTemplateColumns = '1fr 1fr';
+          } else {
+            answers.style.gridTemplateColumns = '1fr 2fr 1fr';
+          }
         }
         
         document.getElementById('card-model1').style.display = vis.model1 ? '' : 'none';
         document.getElementById('card-model2').style.display = vis.model2 ? '' : 'none';
         document.getElementById('card-model3').style.display = vis.model3 ? '' : 'none';
+        document.getElementById('card-model5').style.display = 'none'; // Always hidden - search model works behind the scenes
+        updateAskButtonText();
       }
       document.getElementById('enable-model1').addEventListener('change', applyVisibility);
       document.getElementById('enable-model2').addEventListener('change', applyVisibility);
       document.getElementById('enable-model3').addEventListener('change', applyVisibility);
+      document.getElementById('enable-model5').addEventListener('change', applyVisibility);
+      
+      // Update ask button text based on enabled models
+      function updateAskButtonText() {
+        const enabledModels = ['model1','model2','model3','model5'].filter(m => {
+          const perCard = el(`select-${m}`);
+          const fallback = el(`model-${m.slice(-1)}`);
+          return el(`enable-${m}`).checked && ((perCard && perCard.value) || (fallback && fallback.value));
+        });
+        const askBtn = document.getElementById('askBtn');
+        if (askBtn) {
+          askBtn.textContent = enabledModels.length === 1 ? 'Ask it' : 'Ask all';
+        }
+      }
       applyVisibility();
       // Re-apply saved layout after visibility adjustments
       applySavedLayout();
+      // Initial button text update
+      updateAskButtonText();
 
       // Hide/Maximize/Restore
       let __prevVisibility = null;
@@ -902,14 +1311,22 @@
         if (cb) { cb.checked = false; applyVisibility(); }
       }
       function maximizeModel(modelId) {
+        const targetCard = document.getElementById('card-' + modelId);
+        if (targetCard && targetCard.classList.contains('minimized')) {
+          // If minimized, restore to previous normal state
+          targetCard.classList.remove('minimized');
+          return;
+        }
         __prevVisibility = {
           model1: checkboxFor('model1').checked,
           model2: checkboxFor('model2').checked,
           model3: checkboxFor('model3').checked,
+          model5: checkboxFor('model5').checked,
         };
         checkboxFor('model1').checked = modelId === 'model1';
         checkboxFor('model2').checked = modelId === 'model2';
         checkboxFor('model3').checked = modelId === 'model3';
+        checkboxFor('model5').checked = modelId === 'model5';
         applyVisibility();
         // Switch answers area to single mode and enlarge selected (preserve isolated positions)
         const answers = document.getElementById('answers');
@@ -939,13 +1356,34 @@
         });
         // Hide brand for full utilization and scroll to the card
         document.getElementById('brand').classList.add('hidden');
-        const card = document.getElementById(`card-${modelId}`);
+        const maximizedCard = document.getElementById(`card-${modelId}`);
         document.body.classList.add('max-on');
         // scroll prompt panel out of view so card fills page
         const topPanel = document.getElementById('panel-top');
         const y = topPanel.offsetTop + topPanel.offsetHeight + 8;
         window.scrollTo({ top: y, behavior: 'smooth' });
       }
+      // Click on yellow dot now minimizes if normal; if maximized, restore
+      document.getElementById('dot-restore-model1').addEventListener('click', () => {
+        const c = document.getElementById('card-model1');
+        if (c && c.classList.contains('maximized')) return restoreAll();
+        if (c) c.classList.toggle('minimized');
+      });
+      document.getElementById('dot-restore-model2').addEventListener('click', () => {
+        const c = document.getElementById('card-model2');
+        if (c && c.classList.contains('maximized')) return restoreAll();
+        if (c) c.classList.toggle('minimized');
+      });
+      document.getElementById('dot-restore-model3').addEventListener('click', () => {
+        const c = document.getElementById('card-model3');
+        if (c && c.classList.contains('maximized')) return restoreAll();
+        if (c) c.classList.toggle('minimized');
+      });
+      document.getElementById('dot-restore-model5').addEventListener('click', () => {
+        const c = document.getElementById('card-model5');
+        if (c && c.classList.contains('maximized')) return restoreAll();
+        if (c) c.classList.toggle('minimized');
+      });
       function restoreAll() {
         if (!__prevVisibility) return;
         const answers = document.getElementById('answers');
@@ -973,6 +1411,7 @@
         checkboxFor('model1').checked = __prevVisibility.model1;
         checkboxFor('model2').checked = __prevVisibility.model2;
         checkboxFor('model3').checked = __prevVisibility.model3;
+        checkboxFor('model5').checked = __prevVisibility.model5;
         applyVisibility();
         __prevVisibility = null;
         document.getElementById('brand').classList.remove('hidden');
@@ -1089,9 +1528,13 @@
       function bringToFront(cardId) {
         const card = document.getElementById(cardId);
         if (!card) return;
+        // mark active
+        if (cardId.startsWith('card-')) {
+          __activeCardId = cardId.replace('card-', '');
+        }
         
         // Find the highest z-index among all cards
-        const allCards = ['card-model1', 'card-model2', 'card-model3'];
+        const allCards = ['card-model1', 'card-model2', 'card-model3', 'card-model5'];
         let maxZ = 0;
         allCards.forEach(id => {
           const c = document.getElementById(id);
@@ -1218,7 +1661,7 @@
         // Only initialize if not already in isolated mode
         if (container.classList.contains('isolated')) return;
 
-        const allCards = ['card-model1', 'card-model2', 'card-model3'];
+        const allCards = ['card-model1', 'card-model2', 'card-model3', 'card-model5'];
         // Capture rectangles BEFORE changing layout
         const preRects = {};
         allCards.forEach((cardId) => {
@@ -1257,7 +1700,7 @@
         const container = document.getElementById('answers');
         if (!container || !container.classList.contains('isolated')) return;
         
-        const cards = ['card-model1','card-model2','card-model3']
+        const cards = ['card-model1','card-model2','card-model3','card-model5']
           .map((id) => document.getElementById(id))
           .filter(Boolean);
         
@@ -1272,11 +1715,223 @@
         container.style.minHeight = `${Math.ceil(maxBottom + 20)}px`;
       }
 
+      // Auto-resize prompt textarea (no dock coupling)
+      const promptTextarea = document.getElementById('prompt');
+      if (promptTextarea) {
+        function autoResize() {
+          promptTextarea.style.height = 'auto';
+          const maxH = 140; // hard cap
+          promptTextarea.style.height = Math.min(maxH, Math.max(40, promptTextarea.scrollHeight)) + 'px';
+        }
+        promptTextarea.addEventListener('input', autoResize);
+        promptTextarea.addEventListener('paste', () => setTimeout(autoResize, 0));
+        // Enter to submit (Shift+Enter inserts newline)
+        promptTextarea.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const btn = document.getElementById('askBtn');
+            if (btn && !btn.disabled) btn.click();
+          }
+        });
+        autoResize();
+      }
+      
+      // Make the prompt panel draggable and resizable, independent from cards
+      (function makePromptPanelFloating() {
+        const panel = document.getElementById('panel-bottom');
+        if (!panel) return;
+        let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+        function onDown(e) {
+          const target = e.target;
+          if (!target.classList.contains('panel-drag-strip')) return;
+          const rect = panel.getBoundingClientRect();
+          dragging = true;
+          startLeft = rect.left;
+          startTop = rect.top;
+          startX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+          startY = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+          panel.style.left = startLeft + 'px';
+          panel.style.top = startTop + 'px';
+          panel.style.transform = 'none';
+          panel.style.right = 'auto';
+          panel.style.bottom = 'auto';
+          document.addEventListener('pointermove', onMove);
+          document.addEventListener('pointerup', onUp);
+          document.addEventListener('touchmove', onMove, { passive: false });
+          document.addEventListener('touchend', onUp);
+        }
+        function onMove(e) {
+          if (!dragging) return;
+          const x = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+          const y = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+          const dx = x - startX;
+          const dy = y - startY;
+          panel.style.left = startLeft + dx + 'px';
+          panel.style.top = startTop + dy + 'px';
+          if (e.cancelable) e.preventDefault();
+        }
+        function onUp() {
+          dragging = false;
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onUp);
+          persistPromptPanel();
+        }
+        panel.addEventListener('pointerdown', onDown);
+        panel.addEventListener('touchstart', onDown, { passive: true });
+
+        // Resizer (bottom-right grip)
+        const resizer = document.createElement('div');
+        resizer.style.position = 'absolute';
+        resizer.style.right = '6px';
+        resizer.style.bottom = '6px';
+        resizer.style.width = '14px';
+        resizer.style.height = '14px';
+        resizer.style.cursor = 'nwse-resize';
+        resizer.style.borderRadius = '4px';
+        resizer.className = 'prompt-resizer';
+        panel.appendChild(resizer);
+        let resizing = false, startW = 0, startH = 0;
+        resizer.addEventListener('pointerdown', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const rect = panel.getBoundingClientRect();
+          resizing = true;
+          startX = e.clientX; startY = e.clientY;
+          startW = rect.width; startH = rect.height;
+          document.addEventListener('pointermove', onResize);
+          document.addEventListener('pointerup', onResizeEnd);
+        });
+        function onResize(e) {
+          if (!resizing) return;
+          const dx = e.clientX - startX; const dy = e.clientY - startY;
+          panel.style.width = Math.max(420, startW + dx) + 'px';
+          panel.style.height = Math.max(160, startH + dy) + 'px';
+          persistPromptPanel();
+        }
+        function onResizeEnd() {
+          resizing = false;
+          document.removeEventListener('pointermove', onResize);
+          document.removeEventListener('pointerup', onResizeEnd);
+          persistPromptPanel();
+        }
+
+        // Persistence
+        const LS = window.localStorage;
+        function persistPromptPanel() {
+          const rect = panel.getBoundingClientRect();
+          const state = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+          LS.setItem('ma:prompt-panel', JSON.stringify(state));
+        }
+        function restorePromptPanel() {
+          try {
+            const raw = LS.getItem('ma:prompt-panel');
+            if (!raw) return;
+            const s = JSON.parse(raw);
+            if (s && typeof s === 'object') {
+              panel.style.transform = 'none';
+              panel.style.left = (s.left ?? 40) + 'px';
+              panel.style.top = (s.top ?? (window.innerHeight - (s.height ?? 220) - 24)) + 'px';
+              if (s.width) panel.style.width = s.width + 'px';
+              if (s.height) panel.style.height = s.height + 'px';
+            }
+          } catch {}
+        }
+        restorePromptPanel();
+      })();
+
+
+      // Control panel toggle
+      // Settings modal wiring
+      const settingsFab = document.getElementById('settingsFab');
+      const settingsModal = document.getElementById('settingsModal');
+      const settingsBody = document.getElementById('settingsBody');
+      const closeSettings = document.getElementById('closeSettings');
+      const controlPanelSection = document.getElementById('controlPanelSection');
+      // Keep original location so events stay wired; move node in/out of modal
+      let __settingsPlaceholder = null;
+      let __settingsOriginalParent = null;
+      if (controlPanelSection) {
+        __settingsOriginalParent = controlPanelSection.parentElement;
+        __settingsPlaceholder = document.createComment('settings-placeholder');
+        if (__settingsOriginalParent) {
+          __settingsOriginalParent.insertBefore(__settingsPlaceholder, controlPanelSection.nextSibling);
+        }
+      }
+      function openSettings() {
+        if (!settingsModal || !settingsBody || !controlPanelSection) return;
+        // Move the real section so all existing listeners keep working
+        controlPanelSection.style.display = '';
+        settingsBody.textContent = '';
+        settingsBody.appendChild(controlPanelSection);
+        settingsModal.classList.add('open');
+        settingsModal.setAttribute('aria-hidden', 'false');
+      }
+      function closeSettingsModal() {
+        if (!settingsModal || !controlPanelSection) return;
+        settingsModal.classList.remove('open');
+        settingsModal.setAttribute('aria-hidden', 'true');
+        // Move settings back and hide inline
+        if (__settingsPlaceholder && __settingsPlaceholder.parentNode) {
+          __settingsPlaceholder.parentNode.insertBefore(controlPanelSection, __settingsPlaceholder);
+          controlPanelSection.style.display = 'none';
+        }
+      }
+      if (settingsFab) settingsFab.addEventListener('click', openSettings);
+      if (closeSettings) closeSettings.addEventListener('click', closeSettingsModal);
+      if (settingsModal) settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) closeSettingsModal(); });
+
       ['card-model1','card-model2','card-model3'].forEach(makeDraggable);
       ['card-model1','card-model2','card-model3'].forEach(makeResizable);
+      // Always reset to equal layout on page load
+      (function resetLayoutOnPageLoad() {
+        resetEqualLayout(); // Auto-reset layout on page load
+      })();
       async function ask() {
         console.log('Frontend: Before ask(), window.__histories:', window.__histories);
-        const enabledModels = ['model1','model2','model3'].filter(m => el(`enable-${m}`).checked && el(`model-${m.slice(-1)}`).value);
+        
+        // If search mode is active, use search model for all enabled models
+        if (searchModeActive) {
+          const searchModelValue = el('model-5').value;
+          if (!searchModelValue) {
+            alert('Search model is not configured. Please select a search model in settings.');
+            return;
+          }
+          ensureResearchCardVisibleWithName(el('model-5').options[el('model-5').selectedIndex]?.text || 'Search Model');
+        }
+        
+        // If deep research mode is active, use deep research model for all enabled models
+        if (deepResearchModeActive) {
+          const deepResearchModelValue = el('model-6').value;
+          if (!deepResearchModelValue) {
+            alert('Deep research model is not configured. Please select a deep research model in settings.');
+            return;
+          }
+          ensureResearchCardVisibleWithName(el('model-6').options[el('model-6').selectedIndex]?.text || 'GPT Deep');
+        }
+        
+
+        
+        // If Gemini research mode is active, use Gemini research model for all enabled models
+        if (geminiResearchModeActive) {
+          const geminiResearchModelValue = el('model-8').value;
+          if (!geminiResearchModelValue) {
+            alert('Gemini research model is not configured. Please select a Gemini research model in settings.');
+            return;
+          }
+          ensureResearchCardVisibleWithName(el('model-8').options[el('model-8').selectedIndex]?.text || 'Gemini');
+        }
+        
+        // If Super mode is active, we will auto-summarize after Ask completes (no early return)
+        if (superResearchModeActive) {
+          // no-op here; handled post completion
+        }
+        
+        const enabledModels = ['model1','model2','model3'].filter(m => {
+          const perCard = el(`select-${m}`);
+          const fallback = el(`model-${m.slice(-1)}`);
+          return el(`enable-${m}`).checked && ((perCard && perCard.value) || (fallback && fallback.value));
+        });
         if (enabledModels.length === 0) return;
 
         askBtn.disabled = true;
@@ -1288,7 +1943,19 @@
 
         const jobs = enabledModels.map(async (modelId) => {
           const idx = modelId.slice(-1);
-          const modelValue = el(`model-${idx}`).value;
+          // Use special models if mode is active, otherwise use the model's configured value
+          let modelValue;
+          if (searchModeActive) {
+            modelValue = el('model-5').value;
+          } else if (deepResearchModeActive) {
+            modelValue = el('model-6').value;
+
+          } else if (geminiResearchModeActive) {
+            modelValue = el('model-8').value;
+          } else {
+            const perCard = el(`select-model${idx}`);
+            modelValue = (perCard && perCard.value) || el(`model-${idx}`).value;
+          }
           const provider = getProviderFromModel(modelValue);
           if (!provider) return;
 
@@ -1354,13 +2021,21 @@
         } finally {
           askBtn.disabled = false;
         }
+        // Auto-summarize after all enabled models have responded when Super mode is on
+        if (superResearchModeActive) {
+          // Slight delay to allow DOM to render appended answers smoothly, then trigger Summarize
+          setTimeout(() => {
+            const btn = document.getElementById('summarizeBtn');
+            if (btn) btn.click();
+          }, 50);
+        }
       }
       askBtn.addEventListener('click', ask);
       
       // Stream Model 1 if it's an OpenAI model
       async function askStream() {
         if (!streamBtn) return;
-        const model1Value = el('model-1').value;
+        const model1Value = (el('select-model1')?.value) || el('model-1').value;
         const provider = getProviderFromModel(model1Value);
         if (provider !== 'openai') {
           alert('Streaming is only available for OpenAI models. Please select an OpenAI model for Model 1.');
@@ -1491,7 +2166,16 @@
       }
 
       async function askSingle(modelId) {
-        const modelValue = el(`model-${modelId.slice(-1)}`).value;
+        // Use special models if mode is active, otherwise use the model's configured value
+        let modelValue;
+        if (searchModeActive) {
+          modelValue = el('model-5').value;
+        } else if (deepResearchModeActive) {
+          modelValue = el('model-6').value;
+        } else {
+          const perCard = el(`select-${modelId}`) || el(`select-model${modelId.slice(-1)}`);
+          modelValue = (perCard && perCard.value) || el(`model-${modelId.slice(-1)}`).value;
+        }
         if (!modelValue) return;
         const provider = getProviderFromModel(modelValue);
         if (!provider) return;
@@ -1568,12 +2252,402 @@
         }
       }
 
+      // Handoff helpers
+      function getLastTurn(modelId) {
+        const h = window.__histories?.[modelId];
+        if (!Array.isArray(h) || h.length === 0) return null;
+        // Find last user message (and its following assistant if available)
+        let userIdx = -1;
+        for (let i = h.length - 1; i >= 0; i--) {
+          if (h[i]?.role === 'user') { userIdx = i; break; }
+        }
+        if (userIdx < 0) return null;
+        const turn = { user: h[userIdx]?.content || '', assistant: '' };
+        if (userIdx + 1 < h.length && h[userIdx + 1]?.role === 'assistant') turn.assistant = h[userIdx + 1].content || '';
+        // Include prior context up to userIdx - 1
+        const context = h.slice(0, userIdx).map(x => ({ role: x.role, content: x.content }));
+        return { ...turn, context };
+      }
+      async function handoffTo(targetModelId, fromModelId) {
+        const turn = getLastTurn(fromModelId);
+        if (!turn) return;
+        const idx = targetModelId.slice(-1);
+        const perCard = el(`select-model${idx}`);
+        const modelValue = (perCard && perCard.value) || el(`model-${idx}`).value;
+        if (!modelValue) return;
+        const provider = getProviderFromModel(modelValue);
+        if (!provider) return;
+        const adv = parseAdvanced();
+        const showReasoning = el('show-reasoning').checked;
+        // Build a merged histories object: copy current histories, but for target model inject context
+        const mergedHistories = JSON.parse(JSON.stringify(window.__histories || {}));
+        if (!Array.isArray(mergedHistories[targetModelId])) mergedHistories[targetModelId] = [];
+        // Only inject context if target is empty to avoid duplicating conversations
+        if (mergedHistories[targetModelId].length === 0 && Array.isArray(turn.context)) {
+          mergedHistories[targetModelId].push(...turn.context);
+        }
+        const body = {
+          prompt: turn.user, // resend the last question
+          system: withBriefReasoning((adv[provider]?.system ?? adv.system) ?? '', modelValue, showReasoning),
+          histories: mergedHistories, // includes source context copied into target
+          modelId: targetModelId,
+          providers: { [provider]: true },
+          models: { [provider]: modelValue },
+          temperature: (adv[provider]?.temperature ?? adv.temperature) ?? 0.2,
+          maxTokens: (adv[provider]?.maxTokens ?? adv.maxTokens) ?? 1024,
+          timeoutMs: (adv[provider]?.timeoutMs ?? adv.timeoutMs) ?? 30000,
+          showReasoning,
+        };
+        setLoading(targetModelId, true);
+        try {
+          const res = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json();
+          const r = data[provider];
+          const box = out[targetModelId];
+          if (r?.ok) {
+            const u = document.createElement('div'); u.className = 'msg user'; u.textContent = turn.user;
+            const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = r.text || '';
+            box.appendChild(u); box.appendChild(a); box.dataset.empty = 'false';
+            window.__histories[targetModelId].push({ role: 'user', content: turn.user }, { role: 'assistant', content: r.text || '' });
+            u.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            const errDiv = document.createElement('div'); errDiv.className = 'msg error'; errDiv.textContent = r?.error || 'Error';
+            box.appendChild(errDiv); box.dataset.empty = 'false';
+          }
+        } catch (err) {
+          const box = out[targetModelId];
+          const errDiv = document.createElement('div'); errDiv.className = 'msg error'; errDiv.textContent = 'Network error';
+          box.appendChild(errDiv); box.dataset.empty = 'false';
+        } finally {
+          setLoading(targetModelId, false);
+        }
+      }
+      async function handoffAllFrom(fromModelId) {
+        const enabled = ['model1','model2','model3']
+          .filter(m => el(`enable-${m}`).checked && el(`model-${m.slice(-1)}`).value);
+        const targets = enabled.filter(m => m !== fromModelId);
+        if (targets.length === 0) return;
+        await Promise.allSettled(targets.map(m => handoffTo(m, fromModelId)));
+      }
+
       const btnModel1 = document.getElementById('ask-model1');
       const btnModel2 = document.getElementById('ask-model2');
       const btnModel3 = document.getElementById('ask-model3');
+      const btnModel5 = document.getElementById('ask-model5');
       if (btnModel1) btnModel1.addEventListener('click', () => askSingle('model1'));
       if (btnModel2) btnModel2.addEventListener('click', () => askSingle('model2'));
       if (btnModel3) btnModel3.addEventListener('click', () => askSingle('model3'));
+      if (btnModel5) btnModel5.addEventListener('click', () => askSingle('model5'));
+      // Enter-to-send on follow-up inputs (Shift+Enter for newline)
+      const f1 = document.getElementById('follow-model1');
+      const f2 = document.getElementById('follow-model2');
+      const f3 = document.getElementById('follow-model3');
+      const f5 = document.getElementById('follow-model5');
+      if (f1) f1.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askSingle('model1'); } });
+      if (f2) f2.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askSingle('model2'); } });
+      if (f3) f3.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askSingle('model3'); } });
+      if (f5) f5.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askSingle('model5'); } });
+
+      // Track research windows by type
+      const researchWindows = {
+        gpt: new Set(),
+        gemini: new Set()
+      };
+
+      // Update button state based on window existence
+      function updateResearchButtonStates() {
+        const deepBtn = document.getElementById('deepResearchToggleBtn');
+        const geminiBtn = document.getElementById('geminiResearchToggleBtn');
+        
+        if (deepBtn) {
+          const hasWindows = researchWindows.gpt.size > 0;
+          deepBtn.style.backgroundColor = hasWindows ? '#ff6b35' : '';
+          deepBtn.style.color = hasWindows ? 'white' : '';
+        }
+        if (geminiBtn) {
+          const hasWindows = researchWindows.gemini.size > 0;
+          geminiBtn.style.backgroundColor = hasWindows ? '#34a853' : '';
+          geminiBtn.style.color = hasWindows ? 'white' : '';
+        }
+      }
+
+      // Close all windows of a specific research type
+      function closeResearchWindows(type) {
+        const windowIds = Array.from(researchWindows[type]);
+        windowIds.forEach(uid => {
+          const card = document.getElementById('card-' + uid);
+          if (card) card.remove();
+          researchWindows[type].delete(uid);
+          delete out[uid];
+          delete window.__histories[uid];
+        });
+        updateResearchButtonStates();
+      }
+
+      // Create a brand-new research conversation card (never reuses old one)
+      function openResearchCard(providerKey, modelValue, label) {
+        const titleText = label || providerKey.toUpperCase() + ' Research';
+        const uid = openGeneralCard(modelValue, titleText, true, providerKey);
+        // Update button states  
+        updateResearchButtonStates();
+        return uid;
+      }
+
+      // Close a single research window
+      function closeResearchWindow(uid, windowType) {
+        const card = document.getElementById('card-' + uid);
+        if (card) card.remove();
+        if (windowType && researchWindows[windowType]) {
+          researchWindows[windowType].delete(uid);
+        }
+        delete out[uid];
+        delete window.__histories[uid];
+        updateResearchButtonStates();
+        resetEqualLayout(); // Auto-reset layout when closing windows
+      }
+
+      // Make closeResearchWindow globally accessible
+      window.closeResearchWindow = closeResearchWindow;
+
+      // Ask to the model selected in a card's dropdown
+      function askToSelectedModelCard(targetId) {
+        const sel = document.getElementById('select-' + targetId);
+        if (!sel) return;
+        const modelValue = sel.value;
+        const providerKey = getProviderFromModel(modelValue);
+        if (!providerKey) return;
+        askToProviderCard(targetId, providerKey, modelValue);
+      }
+
+      // General-purpose dynamic window creation
+      function openGeneralCard(defaultModel, label, isResearch = false, providerKey = null) {
+        const answers = document.getElementById('answers');
+        const uid = (isResearch ? 'research_' : 'win_') + Date.now();
+        const cardId = 'card-' + uid;
+        const convoId = uid;
+        const followId = 'follow-' + uid;
+        const askBtnId = 'ask-' + uid;
+        const clearBtnId = 'clear-' + uid;
+        const selectId = 'select-' + uid;
+        const titleText = label || (isResearch ? 'Research Window' : 'New Window');
+        
+        // Track research windows
+        const windowType = isResearch && providerKey ? (() => {
+          const typeMap = { openai: 'gpt', gemini: 'gemini' };
+          return typeMap[providerKey];
+        })() : null;
+        
+        if (windowType) researchWindows[windowType].add(uid);
+        
+        const html = `
+          <div class="card" id="${cardId}"${isResearch ? ` data-research-type="${windowType}"` : ''}>
+            <h3>
+              <span style="display:inline-flex; align-items:center; gap:8px;">
+                <span class="traffic">
+                  <span class="dot red" title="${isResearch ? 'Hide' : 'Close'}" onclick="${isResearch ? `closeResearchWindow('${uid}', '${windowType}')` : `closeWindow('${uid}')`}"></span>
+                  <span class="dot yellow" title="${isResearch ? 'Restore' : 'Minimize'}" onclick="document.getElementById('${cardId}').classList.toggle('minimized');"></span>
+                  ${isResearch ? `<span class="dot green" title="Maximize" onclick="maximizeModel('${uid}')"></span>` : ''}
+                </span>
+                <select class="model-select" id="${selectId}" title="Choose model for this window"></select>
+                <div class="title"><span data-text="${titleText}">${titleText}</span></div>
+                <button class="icon-btn" id="${clearBtnId}" title="Clear this conversation">Clear</button>
+              </span>
+            </h3>
+            <div class="convo" id="${convoId}" data-empty="true" tabindex="0"></div>
+            <div class="mini">
+              <button id="${askBtnId}" class="mini-btn">Ask</button>
+              <textarea id="${followId}" class="follow" rows="2" placeholder="Follow up${isResearch ? ` to ${titleText}` : ''}…"></textarea>
+            </div>
+          </div>`;
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        const card = wrapper.firstElementChild;
+        answers.appendChild(card);
+        out[uid] = document.getElementById(convoId);
+        window.__histories[uid] = window.__histories[uid] || [];
+
+        // Populate model select
+        const sel = document.getElementById(selectId);
+        populateModelSelect(sel, defaultModel || 'gpt-5-mini-2025-08-07');
+        if (sel) sel.addEventListener('change', () => updateCardTitleFromSelect(uid));
+        updateCardTitleFromSelect(uid);
+
+        // Wire clear
+        document.getElementById(clearBtnId)?.addEventListener('click', () => {
+          out[uid].innerHTML = '';
+          out[uid].dataset.empty = 'true';
+          window.__histories[uid] = [];
+        });
+        // Wire ask - research windows may use specific provider, others use selected model
+        document.getElementById(askBtnId)?.addEventListener('click', () => askToSelectedModelCard(uid));
+        const f = document.getElementById(followId);
+        if (f) {
+          if (isResearch && providerKey) {
+            f.addEventListener('keydown', (e) => { 
+              if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                const selectedModel = document.getElementById(selectId)?.value;
+                askToProviderCard(uid, providerKey, selectedModel); 
+              } 
+            });
+          } else {
+            f.addEventListener('keydown', (e) => { 
+              if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                askToSelectedModelCard(uid); 
+              } 
+            });
+          }
+        }
+
+        makeDraggable(cardId);
+        makeResizable(cardId);
+        resetEqualLayout(); // Auto-reset layout when adding windows
+        __activeCardId = uid;
+        return uid;
+      }
+
+      function closeWindow(uid) {
+        const card = document.getElementById('card-' + uid);
+        if (card) card.remove();
+        delete out[uid];
+        delete window.__histories[uid];
+        resetEqualLayout(); // Auto-reset layout when closing windows
+      }
+
+      async function askToProviderCard(targetId, providerKey, modelValue) {
+        if (!providerKey || !modelValue) return;
+        const box = out[targetId];
+        if (!box) return;
+        const follow = document.getElementById('follow-' + targetId);
+        const followText = follow ? follow.value.trim() : '';
+        const promptMain = el('prompt')?.value || '';
+        let promptText = followText || promptMain;
+        if (!promptText) return;
+        
+        // Keep the original prompt for Gemini Deep, but modify the system message instead
+        let customSystem = null;
+        if (providerKey === 'gemini') {
+          customSystem = `You will be given a research task by a user. Your job is to produce a set of
+instructions for a researcher that will complete the task. Do NOT complete the
+task yourself, just provide instructions on how to complete it.
+
+GUIDELINES:
+1. **Maximize Specificity and Detail**
+- Include all known user preferences and explicitly list key attributes or
+  dimensions to consider.
+- It is of utmost importance that all details from the user are included in
+  the instructions.
+
+2. **Fill in Unstated But Necessary Dimensions as Open-Ended**
+- If certain attributes are essential for a meaningful output but the user
+  has not provided them, explicitly state that they are open-ended or default
+  to no specific constraint.
+
+3. **Avoid Unwarranted Assumptions**
+- If the user has not provided a particular detail, do not invent one.
+- Instead, state the lack of specification and guide the researcher to treat
+  it as flexible or accept all possible options.
+
+4. **Use the First Person**
+- Phrase the request from the perspective of the user.
+
+5. **Tables**
+- If you determine that including a table will help illustrate, organize, or
+  enhance the information in the research output, you must explicitly request
+  that the researcher provide them (examples: product comparison, project
+  tracking, budget planning, competitor analysis).
+
+6. **Headers and Formatting**
+- Include the expected output format in the prompt.
+- If the user is asking for content that would be best returned in a
+  structured format (e.g. a report, plan, etc.), ask the researcher to format
+  as a report with the appropriate headers and formatting that ensures clarity
+  and structure.
+
+7. **Language**
+- If the user input is in a language other than English, tell the researcher
+  to respond in this language, unless the user query explicitly asks for the
+  response in a different language.
+
+8. **Sources**
+- If specific sources should be prioritized, specify them in the prompt.
+- For product and travel research, prefer linking directly to official or
+  primary websites.
+- For academic or scientific queries, prefer linking directly to the original
+  paper or journal publication.
+- If the query is in a specific language, prioritize sources published in that
+  language.
+
+You are a helpful assistant. Be concise and direct.`;
+        }
+        
+        const adv = parseAdvanced();
+        const body = {
+          prompt: promptText,
+          system: customSystem || withBriefReasoning((adv[providerKey]?.system ?? adv.system) ?? '', modelValue, false),
+          providers: { [providerKey]: true },
+          models: { [providerKey]: modelValue },
+          histories: window.__histories,
+          modelId: targetId,
+          temperature: (adv[providerKey]?.temperature ?? adv.temperature) ?? 0.2,
+          maxTokens: (adv[providerKey]?.maxTokens ?? adv.maxTokens) ?? 1024,
+          timeoutMs: (adv[providerKey]?.timeoutMs ?? adv.timeoutMs) ?? 30000,
+          showReasoning: false,
+        };
+        setLoading(targetId, true);
+        try {
+          const res = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json();
+          const r = data[providerKey];
+          const u = document.createElement('div'); u.className = 'msg user'; u.textContent = promptText; box.appendChild(u);
+          const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = r?.ok ? (r.text || '') : (r?.error || 'Error'); box.appendChild(a);
+          box.dataset.empty = 'false'; box.scrollTop = box.scrollHeight;
+          // Update history
+          const hist = window.__histories[targetId] || (window.__histories[targetId] = []);
+          hist.push({ role: 'user', content: promptText }, { role: 'assistant', content: a.textContent });
+          if (follow) follow.value = '';
+        } catch (err) {
+          const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = 'Error: ' + (err?.message || err); box.appendChild(a); box.scrollTop = box.scrollHeight;
+        } finally {
+          setLoading(targetId, false);
+        }
+      }
+
+
+      // Auto-grow follow textareas up to 5 lines and never exceed card width
+      function autoGrowFollow(el) {
+        const computed = window.getComputedStyle(el);
+        const lineHeight = parseFloat(computed.lineHeight) || 18;
+        const padTop = parseFloat(computed.paddingTop) || 6;
+        const padBottom = parseFloat(computed.paddingBottom) || 6;
+        const minLines = 2;
+        const maxLines = 5;
+        const minH = Math.round(lineHeight * minLines + padTop + padBottom);
+        const maxH = Math.round(lineHeight * maxLines + padTop + padBottom);
+        el.style.height = 'auto';
+        const scrollH = el.scrollHeight;
+        el.style.height = Math.min(Math.max(scrollH, minH), maxH) + 'px';
+      }
+      [f1, f2, f3, f5].forEach((el, i) => {
+        if (!el) return;
+        el.addEventListener('input', () => autoGrowFollow(el));
+        // Ensure width never exceeds its container
+        el.style.maxWidth = '100%';
+        autoGrowFollow(el);
+      });
+      // Wire Handoff buttons per card
+      const handoff1 = document.getElementById('handoff-model1');
+      const handoff2 = document.getElementById('handoff-model2');
+      const handoff3 = document.getElementById('handoff-model3');
+      const handoff5 = document.getElementById('handoff-model5');
+      // Handoff per card: from active card to this specific model
+      if (handoff1) handoff1.addEventListener('click', () => handoffTo('model1', __activeCardId));
+      if (handoff2) handoff2.addEventListener('click', () => handoffTo('model2', __activeCardId));
+      if (handoff3) handoff3.addEventListener('click', () => handoffTo('model3', __activeCardId));
+      if (handoff5) handoff5.addEventListener('click', () => handoffTo('model5', __activeCardId));
+      const handoffAllBtn = document.getElementById('handoffAllBtn');
+      if (handoffAllBtn) handoffAllBtn.addEventListener('click', () => handoffAllFrom(__activeCardId));
 
       // Clear functions
       function clearConversation(modelId) {
@@ -1591,56 +2665,467 @@
         if (follow) follow.value = '';
       }
       function clearAllConversations() {
-        ['model1','model2','model3'].forEach(clearConversation);
+        ['model1','model2','model3','model5'].forEach(clearConversation);
       }
       const resetAllBtn = document.getElementById('resetAllBtn');
       if (resetAllBtn) resetAllBtn.addEventListener('click', clearAllConversations);
       const resetLayoutBtn = document.getElementById('resetLayoutBtn');
-      if (resetLayoutBtn) resetLayoutBtn.addEventListener('click', () => { clearSavedLayout(); clearSavedColumns(); });
+      if (resetLayoutBtn) resetLayoutBtn.addEventListener('click', resetEqualLayout);
+      
+      // Close all research windows functionality
+      function closeAllResearchWindows() {
+        // Close all GPT Deep windows
+        closeResearchWindows('gpt');
+        // Close all Gemini windows  
+        closeResearchWindows('gemini');
+      }
+      const closeAllWindowsBtn = document.getElementById('closeAllWindowsBtn');
+      if (closeAllWindowsBtn) closeAllWindowsBtn.addEventListener('click', closeAllResearchWindows);
       const clear1 = document.getElementById('clear-model1');
       const clear2 = document.getElementById('clear-model2');
       const clear3 = document.getElementById('clear-model3');
+      const clear5 = document.getElementById('clear-model5');
       if (clear1) clear1.addEventListener('click', () => clearConversation('model1'));
       if (clear2) clear2.addEventListener('click', () => clearConversation('model2'));
       if (clear3) clear3.addEventListener('click', () => clearConversation('model3'));
+      if (clear5) clear5.addEventListener('click', () => clearConversation('model5'));
+
+      // Search toggle functionality
+      let searchModeActive = false;
+      const searchToggleBtn = document.getElementById('searchToggleBtn');
+      if (searchToggleBtn) {
+        searchToggleBtn.addEventListener('click', () => {
+          searchModeActive = !searchModeActive;
+          // Disable deep research if search is activated
+          if (searchModeActive && deepResearchModeActive) {
+            deepResearchModeActive = false;
+            if (deepResearchToggleBtn) {
+              deepResearchToggleBtn.style.backgroundColor = '';
+              deepResearchToggleBtn.style.color = '';
+            }
+          }
+          searchToggleBtn.style.backgroundColor = searchModeActive ? '#007aff' : '';
+          searchToggleBtn.style.color = searchModeActive ? 'white' : '';
+          searchToggleBtn.title = searchModeActive ? 'Search mode active - click to disable' : 'Toggle search mode - when active, all questions use search model';
+        });
+      }
+
+      // Deep Research toggle functionality
+      let deepResearchModeActive = false;
+      const deepResearchToggleBtn = document.getElementById('deepResearchToggleBtn');
+      if (deepResearchToggleBtn) {
+        deepResearchToggleBtn.addEventListener('click', () => {
+          // If there are windows open, close them instead of toggling mode
+          if (researchWindows.gpt.size > 0) {
+            closeResearchWindows('gpt');
+            return;
+          }
+          
+          // Just open a new GPT Deep window - no need to disable other modes
+          const label = el('model-6').options[el('model-6').selectedIndex]?.text || 'GPT Deep';
+          openResearchCard('openai', el('model-6').value, label);
+        });
+      }
+
+
+
+      // Gemini Research toggle functionality
+      let geminiResearchModeActive = false;
+      const geminiResearchToggleBtn = document.getElementById('geminiResearchToggleBtn');
+      if (geminiResearchToggleBtn) {
+        geminiResearchToggleBtn.addEventListener('click', () => {
+          // If there are windows open, close them instead of toggling mode
+          if (researchWindows.gemini.size > 0) {
+            closeResearchWindows('gemini');
+            return;
+          }
+          
+          // Just open a new Gemini Deep window - no need to disable other modes
+          const label = el('model-8').options[el('model-8').selectedIndex]?.text || 'Gemini';
+          openResearchCard('gemini', el('model-8').value, label);
+        });
+      }
+
+      // Super Research toggle functionality
+      let superResearchModeActive = false;
+      const superResearchToggleBtn = document.getElementById('superResearchToggleBtn');
+      if (superResearchToggleBtn) {
+        superResearchToggleBtn.addEventListener('click', () => {
+          superResearchModeActive = !superResearchModeActive;
+          // Disable other modes if Super research is activated
+          if (superResearchModeActive) {
+            if (searchModeActive) {
+              searchModeActive = false;
+              if (searchToggleBtn) { searchToggleBtn.style.backgroundColor = ''; searchToggleBtn.style.color = ''; }
+            }
+            if (deepResearchModeActive) {
+              deepResearchModeActive = false;
+              if (deepResearchToggleBtn) { deepResearchToggleBtn.style.backgroundColor = ''; deepResearchToggleBtn.style.color = ''; }
+            }
+
+            if (geminiResearchModeActive) {
+              geminiResearchModeActive = false;
+              if (geminiResearchToggleBtn) { geminiResearchToggleBtn.style.backgroundColor = ''; geminiResearchToggleBtn.style.color = ''; }
+            }
+          }
+          superResearchToggleBtn.style.backgroundColor = superResearchModeActive ? 'linear-gradient(45deg, #ff6b35, #6366f1, #34a853)' : '';
+          superResearchToggleBtn.style.background = superResearchModeActive ? 'linear-gradient(45deg, #ff6b35, #6366f1, #34a853)' : '';
+          superResearchToggleBtn.style.color = superResearchModeActive ? 'white' : '';
+          superResearchToggleBtn.title = superResearchModeActive ? 'Super Research mode active - uses all 3 research models then summarizes' : 'Super Research - uses all 3 research models then GPT-4o summarizes into one comprehensive report';
+        });
+      }
 
       // Wire card control buttons
       // Traffic light style controls
       document.getElementById('dot-hide-model1').addEventListener('click', () => hideModel('model1'));
       document.getElementById('dot-hide-model2').addEventListener('click', () => hideModel('model2'));
       document.getElementById('dot-hide-model3').addEventListener('click', () => hideModel('model3'));
+      document.getElementById('dot-hide-model5').addEventListener('click', () => hideModel('model5'));
       document.getElementById('dot-max-model1').addEventListener('click', () => maximizeModel('model1'));
       document.getElementById('dot-max-model2').addEventListener('click', () => maximizeModel('model2'));
       document.getElementById('dot-max-model3').addEventListener('click', () => maximizeModel('model3'));
-      document.getElementById('dot-restore-model1').addEventListener('click', restoreAll);
-      document.getElementById('dot-restore-model2').addEventListener('click', restoreAll);
-      document.getElementById('dot-restore-model3').addEventListener('click', restoreAll);
-      // Taller/Shorter buttons (keep width, adjust height)
-      function taller(modelId) {
-        const card = document.getElementById('card-' + modelId);
-        if (!card) return;
-        const currentHeight = parseFloat(card.style.height) || card.getBoundingClientRect().height;
-        card.style.height = Math.round(currentHeight + 200) + 'px';
-        const spec = getCurrentCardSpec('card-' + modelId);
-        if (spec) saveLayoutForCard('card-' + modelId, spec);
+      document.getElementById('dot-max-model5').addEventListener('click', () => maximizeModel('model5'));
+      // restoreAll now handled conditionally above; remove duplicate bindings
+
+
+      // Super Research function - uses all 3 research models then summarizes
+      async function askSuperResearch() {
+        const promptText = el('prompt').value;
+        if (!promptText.trim()) return;
+
+        askBtn.disabled = true;
+        const enabledModels = ['model1', 'model2', 'model3'].filter(m => el(`enable-${m}`).checked);
+        if (enabledModels.length === 0) {
+          enabledModels.push('model1'); // Default to model1 if none enabled
+        }
+
+        try {
+          // Step 1: Run all research models
+          const deepModel = el('model-6').value;
+          const geminiModel = el('model-8').value;
+          const summarizerModel = el('model-9').value;
+
+          const researchPrompt = `Conduct comprehensive research on: ${promptText}
+
+Please provide detailed analysis, findings, and insights.`;
+
+          // Run research models in parallel
+          const researchJobs = [
+            { modelValue: deepModel, name: 'Deep Research' },
+            { modelValue: geminiModel, name: 'Gemini' }
+          ].map(async ({ modelValue, name }) => {
+            const provider = getProviderFromModel(modelValue);
+            if (!provider) return { name, result: `${name} model not available` };
+
+            try {
+              const res = await fetch('/api/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  prompt: researchPrompt,
+                  model: modelValue,
+                  provider: provider,
+                  showReasoning: false,
+                  advanced: {}
+                })
+              });
+              const data = await res.json();
+              return { name, result: data.answer || `${name} failed to respond` };
+            } catch (error) {
+              return { name, result: `${name} error: ${error.message}` };
+            }
+          });
+
+          // Wait for all research to complete
+          const researchResults = await Promise.all(researchJobs);
+
+          // Step 2: Summarize all results with GPT-4o
+          const summaryPrompt = `You are tasked with creating a comprehensive research summary. Below are research results from 3 different AI research systems on the topic: "${promptText}"
+
+${researchResults.map(r => `## ${r.name} Results:\n${r.result}`).join('\n\n')}
+
+Please create a unified, comprehensive report that:
+1. Synthesizes the key findings from all three research sources
+2. Identifies common themes and contradictions
+3. Provides a balanced, well-structured final analysis
+4. Highlights the most important insights and actionable information
+
+Format your response as a detailed research report.`;
+
+          const summarizerProvider = getProviderFromModel(summarizerModel);
+          const summaryRes = await fetch('/api/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: summaryPrompt,
+              model: summarizerModel,
+              provider: summarizerProvider,
+              showReasoning: false,
+              advanced: {}
+            })
+          });
+
+          const summaryData = await summaryRes.json();
+          const finalReport = summaryData.answer || 'Failed to generate summary';
+
+          // Display results in the enabled models
+          enabledModels.forEach(modelId => {
+            const outEl = out[modelId];
+            if (outEl) {
+              outEl.innerHTML += `<div class="qa-pair">
+                <div class="human-msg">${promptText}</div>
+                <div class="ai-msg">
+                  <div style="background: linear-gradient(45deg, #ff6b35, #6366f1, #34a853); padding: 8px; border-radius: 6px; margin-bottom: 12px; color: white; font-weight: bold;">
+                    🚀 Super Research Report
+                  </div>
+                  ${finalReport}
+                  
+                  <details style="margin-top: 16px; border: 1px solid #ddd; border-radius: 6px; padding: 8px;">
+                    <summary style="cursor: pointer; font-weight: bold;">View Individual Research Results</summary>
+                    ${researchResults.map(r => `<div style="margin: 12px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;">
+                      <strong>${r.name}:</strong><br>${r.result}
+                    </div>`).join('')}
+                  </details>
+                </div>
+              </div>`;
+              outEl.scrollTop = outEl.scrollHeight;
+              outEl.dataset.empty = 'false';
+            }
+          });
+
+          // Update histories
+          enabledModels.forEach(modelId => {
+            if (!window.__histories[modelId]) window.__histories[modelId] = [];
+            window.__histories[modelId].push({
+              role: 'user',
+              content: promptText
+            }, {
+              role: 'assistant', 
+              content: finalReport
+            });
+          });
+
+          // Clear prompt
+          el('prompt').value = '';
+
+        } catch (error) {
+          console.error('Super Research error:', error);
+          alert('Super Research failed: ' + error.message);
+        } finally {
+          askBtn.disabled = false;
+        }
+      }
+
+      // API Usage Monitor – opens a popup showing recent backend API usage log
+      (function wireUsageMonitor(){
+        const btn = document.getElementById('usageMonitorBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+          const w = window.open('', 'api-usage-monitor', 'width=720,height=560');
+          if (!w) return;
+          w.document.write('<html><head><title>API Usage Monitor</title>'+
+            '<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0b1020;color:#eaeef7;margin:0;padding:12px;}'+
+            'h2{margin:0 0 12px 0;font-weight:600;} table{width:100%;border-collapse:collapse;} th,td{font-size:12px;border-bottom:1px solid rgba(255,255,255,0.1);padding:6px;text-align:left;white-space:nowrap;} td.wrap{white-space:normal;word-break:break-word;}'+
+            'thead{position:sticky;top:0;background:#0b1020;} .muted{opacity:0.75}</style></head><body><h2>API Usage</h2><div id="content">Loading…</div></body></html>');
+          async function refresh(){
+            try {
+              const res = await fetch('/api/usage');
+              const data = await res.json();
+              const rows = (data.entries||[]).map(e=>{
+                const when = new Date(e.ts||Date.now()).toLocaleTimeString();
+                const payloadStr = e.payload ? encodeURIComponent(JSON.stringify(e.payload, null, 2)) : '';
+                return `<tr><td>${when}</td><td>${e.provider||''}</td><td>${e.endpoint||''}</td><td>${e.model||''}</td><td>${e.ok===false?'<span class=\"muted\">fail</span>':'ok'}</td><td class=\"wrap\"><button data-payload=\"${payloadStr}\" style=\"font-size:11px;padding:4px 6px;\">View payload</button></td></tr>`;
+              }).join('');
+              w.document.getElementById('content').innerHTML = `<table><thead><tr><th>Time</th><th>Provider</th><th>Endpoint</th><th>Model</th><th>Status</th><th>Payload</th></tr></thead><tbody>${rows||''}</tbody></table>`;
+              const buttons = w.document.querySelectorAll('button[data-payload]');
+              buttons.forEach(btn=>{
+                btn.addEventListener('click',()=>{
+                  const raw = decodeURIComponent(btn.getAttribute('data-payload')||'');
+                  const win = w.open('', '_blank', 'width=780,height=640');
+                  if (!win) return;
+                  win.document.write('<pre style="white-space:pre-wrap;word-wrap:break-word;padding:12px;background:#0b1020;color:#eaeef7;margin:0;">'+(raw?raw:'(no payload)')+'</pre>');
+                });
+              });
+            } catch(err) {
+              w.document.getElementById('content').textContent = 'Failed to load usage: '+(err?.message||err);
+            }
+          }
+          refresh();
+          w.__usageInterval = w.setInterval(refresh, 3000);
+          w.addEventListener('beforeunload', ()=> { if (w.__usageInterval) clearInterval(w.__usageInterval); });
+        });
+      })();
+
+      // Add Window button wiring
+      (function wireAddWindow(){
+        const btn = document.getElementById('addWindowBtn');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+          const fallback = document.getElementById('model-2')?.value || document.getElementById('model-1')?.value || 'gpt-5-mini-2025-08-07';
+          openGeneralCard(fallback);
+        });
+      })();
+
+      // Helper: position a newly created card without resetting entire layout
+      function positionNewCard(cardId) {
+        const card = document.getElementById(cardId);
+        const answers = document.getElementById('answers');
+        if (!card || !answers) return;
+        // If already isolated, keep; else initialize once
+        if (!answers.classList.contains('isolated')) {
+          initializeAllCardsForIsolation();
+        }
+        const containerRect = answers.getBoundingClientRect();
+        const cards = Array.from(answers.querySelectorAll('.card')).filter(c => c.id !== cardId);
+        let maxBottom = 0;
+        cards.forEach(c => {
+          const top = parseFloat(c.style.top) || (c.getBoundingClientRect().top - containerRect.top);
+          const h = parseFloat(c.style.height) || c.getBoundingClientRect().height;
+          const bottom = top + h;
+          if (bottom > maxBottom) maxBottom = bottom;
+        });
+        const width = Math.min(560, Math.max(420, Math.round(containerRect.width * 0.5)));
+        const left = 12;
+        const top = Math.max(0, Math.round(maxBottom + 12));
+        card.style.position = 'absolute';
+        card.style.left = left + 'px';
+        card.style.top = top + 'px';
+        card.style.width = width + 'px';
+        // don't force a fixed height if CSS already sets; only set if unset
+        if (!card.style.height) card.style.height = '420px';
+        const spec = getCurrentCardSpec(cardId);
+        if (spec) saveLayoutForCard(cardId, spec);
         updateIsolatedLayout();
       }
-      function shorter(modelId) {
-        const card = document.getElementById('card-' + modelId);
-        if (!card) return;
-        const currentHeight = parseFloat(card.style.height) || card.getBoundingClientRect().height;
-        const next = Math.max(220, currentHeight - 200);
-        card.style.height = Math.round(next) + 'px';
-        const spec = getCurrentCardSpec('card-' + modelId);
-        if (spec) saveLayoutForCard('card-' + modelId, spec);
-        updateIsolatedLayout();
-      }
-      document.getElementById('dot-tall-model1').addEventListener('click', () => taller('model1'));
-      document.getElementById('dot-tall-model2').addEventListener('click', () => taller('model2'));
-      document.getElementById('dot-tall-model3').addEventListener('click', () => taller('model3'));
-      document.getElementById('dot-short-model1').addEventListener('click', () => shorter('model1'));
-      document.getElementById('dot-short-model2').addEventListener('click', () => shorter('model2'));
-      document.getElementById('dot-short-model3').addEventListener('click', () => shorter('model3'));
+
+      // Summarize outputs from visible windows into bullet points
+      (function wireSummarize(){
+        const btn = document.getElementById('summarizeBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+          const answers = document.getElementById('answers');
+          const visibleCards = Array.from(answers.querySelectorAll('.card')).filter(c => getComputedStyle(c).display !== 'none');
+          const items = [];
+          visibleCards.forEach(card => {
+            const id = card.id.replace(/^card-/, '');
+            const box = out[id];
+            if (!box) return;
+            const msgs = box.querySelectorAll('.msg.assistant');
+            if (!msgs || msgs.length === 0) return;
+            const last = msgs[msgs.length - 1];
+            const titleSpan = card.querySelector('.title span');
+            const title = (titleSpan?.textContent || id).trim();
+            const text = (last.textContent || '').trim();
+            if (text) items.push({ id, title, text });
+          });
+          if (items.length === 0) { alert('No outputs to summarize yet.'); return; }
+
+          // Choose summarizer model - default to gpt-4o-mini
+          let summarizerModel = document.getElementById('model-9')?.value || 'gpt-4o-mini';
+          if (!summarizerModel) {
+            summarizerModel = 'gpt-4o-mini';
+          }
+          const providerKey = getProviderFromModel(summarizerModel);
+          if (!providerKey) { alert('Please configure a summarizer model in settings.'); return; }
+
+          const uid = openGeneralCard(summarizerModel, 'Summary');
+          // Maximize the new summary window in the center
+          try {
+            const answersEl = document.getElementById('answers');
+            if (answersEl) answersEl.classList.add('single');
+            // Hide others visually by ensuring only the new card has .maximized
+            const allCards = Array.from(document.querySelectorAll('.card'));
+            const target = document.getElementById('card-' + uid);
+            allCards.forEach(c => c.classList.remove('maximized'));
+            if (target) {
+              // Clear inline geometry to let .maximized sizing take effect
+              target.style.position = '';
+              target.style.left = '';
+              target.style.top = '';
+              target.style.width = '';
+              target.style.height = '';
+              target.style.zIndex = '';
+              target.classList.add('maximized');
+              // Scroll into view center
+              target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            document.getElementById('brand')?.classList.add('hidden');
+            document.body.classList.add('max-on');
+          } catch {}
+          setLoading(uid, true);
+
+          // Load prompt config from backend so it can be edited in src/prompts.js
+          let systemText = 'You are a helpful summarizer. Return only a bullet list.';
+          let preface = [
+            'Summarize the following model outputs into a concise list of bullet points.',
+            '- Use short, scannable bullets.',
+            '- Group related ideas and remove duplicates.',
+            '- Highlight agreements, contradictions, and standout insights.',
+            '- Aim for 5–12 bullets.',
+          ];
+          let sourcesTitle = 'Sources:';
+          try {
+            console.log('Fetching summarize config...');
+            const cfgRes = await fetch('/api/prompts/summarize');
+            const cfgData = await cfgRes.json();
+            console.log('Summarize config response:', cfgData);
+            if (cfgData?.ok && cfgData.config) {
+              console.log('Using config:', cfgData.config);
+              systemText = cfgData.config.system || systemText;
+              if (Array.isArray(cfgData.config.preface)) preface = cfgData.config.preface;
+              if (cfgData.config.sourcesTitle) sourcesTitle = cfgData.config.sourcesTitle;
+              console.log('Final systemText:', systemText);
+              console.log('Final preface:', preface);
+            } else {
+              console.log('Config not loaded, using defaults');
+            }
+          } catch (err) {
+            console.error('Failed to load summarize config:', err);
+          }
+          // Only include sources in the user prompt - instructions go in system prompt
+          const promptParts = [];
+          promptParts.push(sourcesTitle);
+          items.forEach((it, idx) => { promptParts.push(`\n[${idx+1}] ${it.title}:\n${it.text}`); });
+          const promptText = promptParts.join('\n');
+
+          try {
+            const requestBody = {
+              prompt: promptText,
+              system: systemText,
+              histories: window.__histories,
+              modelId: uid,
+              providers: { [providerKey]: true },
+              models: { [providerKey]: summarizerModel },
+              temperature: 0.2,
+              maxTokens: 800,
+              timeoutMs: 30000,
+              showReasoning: false
+            };
+            console.log('Summarizer request:', requestBody);
+            const res = await fetch('/api/ask', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestBody)
+            });
+            const data = await res.json();
+            const r = data[providerKey];
+            const box = out[uid];
+            if (box) {
+              const u = document.createElement('div'); u.className = 'msg user'; u.textContent = `Summarize ${items.length} outputs into bullet points.`; box.appendChild(u);
+              const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = r?.ok ? (r.text || '') : (r?.error || 'Error'); box.appendChild(a);
+              box.dataset.empty = 'false'; box.scrollTop = box.scrollHeight;
+              const hist = window.__histories[uid] || (window.__histories[uid] = []);
+              hist.push({ role: 'user', content: promptText }, { role: 'assistant', content: a.textContent });
+            }
+          } catch (err) {
+            const box = out[uid];
+            if (box) {
+              const a = document.createElement('div'); a.className = 'msg assistant'; a.textContent = 'Error: ' + (err?.message || err); box.appendChild(a); box.scrollTop = box.scrollHeight; box.dataset.empty = 'false';
+            }
+          } finally {
+            setLoading(uid, false);
+          }
+        });
+      })();
     </script>
   </body>
   </html>

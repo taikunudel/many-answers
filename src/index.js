@@ -20,68 +20,7 @@ async function readStdinIfPiped() {
 }
 
 
-async function askOpenAI({ prompt, system, model, temperature, maxTokens }) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
-  const client = new OpenAI({ apiKey });
 
-  const messages = [];
-  if (system) messages.push({ role: 'system', content: system });
-  messages.push({ role: 'user', content: prompt });
-
-  const completion = await client.chat.completions.create({
-    model,
-    messages,
-    temperature,
-    max_tokens: maxTokens,
-  });
-  const choice = completion.choices?.[0]?.message;
-  const content = Array.isArray(choice?.content)
-    ? choice.content.map((c) => (typeof c === 'string' ? c : c?.text || '')).join('')
-    : (choice?.content ?? '');
-  return content;
-}
-
-async function askClaude({ prompt, system, model, temperature, maxTokens }) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('Missing ANTHROPIC_API_KEY');
-  const anthropic = new Anthropic({ apiKey });
-
-  const response = await anthropic.messages.create({
-    model,
-    system: system || undefined,
-    max_tokens: maxTokens,
-    temperature,
-    messages: [
-      { role: 'user', content: prompt },
-    ],
-  });
-  // response.content is an array of blocks; collect text
-  const text = (response.content || [])
-    .map((b) => (b.type === 'text' ? b.text : ''))
-    .join('');
-  return text;
-}
-
-async function askGemini({ prompt, system, model, temperature, maxTokens }) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('Missing GEMINI_API_KEY');
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const geminiModel = genAI.getGenerativeModel({
-    model,
-    ...(system ? { systemInstruction: system } : {}),
-  });
-  const generationConfig = {
-    temperature,
-    maxOutputTokens: maxTokens,
-  };
-  const result = await geminiModel.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig,
-  });
-  const text = (await result.response).text();
-  return text;
-}
 
 function printDivider() {
   console.log(chalk.gray('────────────────────────────────────────'));
